@@ -28,10 +28,6 @@ export async function sendPasswordResetEmail(email: string, resetUrl: string) {
           </a>
         </div>
         <p style="font-size: 14px; color: #6b7280;">If you didn't request a password reset, you can safely ignore this email.</p>
-        <p style="font-size: 12px; color: #9ca3af; margin-top: 30px; border-top: 1px solid #eee; padding-top: 10px;">
-          Alternatively, you can copy and paste this link into your browser:<br/>
-          <a href="${resetUrl}" style="color: #3b82f6; word-break: break-all;">${resetUrl}</a>
-        </p>
       </div>
     `,
   };
