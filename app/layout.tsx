@@ -6,6 +6,9 @@ export const metadata: Metadata = {
   description: 'Premium Clothing',
 }
 
+import { Providers } from '@/components/layout/Providers'
+import { Navbar } from '@/components/layout/Navbar'
+
 export default function RootLayout({
   children,
 }: {
@@ -13,8 +16,11 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body>
-        {children}
+      <body className="bg-gray-50 min-h-screen">
+        <Providers>
+          <Navbar />
+          {children}
+        </Providers>
       </body>
     </html>
   )
