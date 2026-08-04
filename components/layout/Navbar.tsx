@@ -41,7 +41,7 @@ export function Navbar() {
         <div className="flex justify-between items-center h-14">
           {/* Logo */}
           <Link href="/" className="text-base font-semibold text-gray-900 tracking-tight">
-            E-commerce
+            Attire Lab
           </Link>
 
           {/* Right side actions */}
