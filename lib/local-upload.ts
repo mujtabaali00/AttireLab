@@ -1,7 +1,7 @@
 import { writeFile, unlink } from 'fs/promises'
 import { join } from 'path'
 import { v4 as uuidv4 } from 'uuid'
-import { extname } from 'path'
+
 
 export async function saveImageLocally(buffer: Buffer, mimeType: string): Promise<string> {
   const extension = mimeType.split('/')[1] || 'jpg'

@@ -54,7 +54,7 @@ function ResetPasswordForm() {
           router.push("/auth/login")
         }, 3000)
       }
-    } catch (err) {
+    } catch {
       setError("An unexpected error occurred.")
     } finally {
       setIsLoading(false)

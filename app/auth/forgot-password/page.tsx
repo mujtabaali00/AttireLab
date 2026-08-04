@@ -49,7 +49,7 @@ export default function ForgotPasswordPage() {
           setResetUrl(result.data.resetUrl)
         }
       }
-    } catch (err) {
+    } catch {
       setError("An unexpected error occurred.")
     } finally {
       setIsLoading(false)

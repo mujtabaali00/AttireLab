@@ -135,7 +135,7 @@ export default function LoginPage() {
           Forgot Password? Reset
         </Link>
         <Link href="/auth/register" className="text-blue-500 hover:underline">
-          Don't have an account? SignUp
+          Don&apos;t have an account? SignUp
         </Link>
       </div>
     </div>
