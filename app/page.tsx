@@ -1,41 +1,25 @@
-import { auth, signOut } from "@/auth"
+import { db } from '@/lib/db'
+import { ProductList } from '@/components/products/ProductList'
 
 export default async function Home() {
-  const session = await auth()
+  const rawProducts = await db.product.findMany({
+    include: { images: true },
+    orderBy: { createdAt: 'desc' }
+  })
+
+  // Serialize Prisma Decimal and Date objects before passing to Client Component
+  const products = rawProducts.map(p => ({
+    ...p,
+    price: Number(p.price),
+    createdAt: p.createdAt.toISOString(),
+    updatedAt: p.updatedAt.toISOString(),
+  }))
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center p-24">
-      <h1 className="text-4xl font-bold">Welcome to AttireLab</h1>
-      
-      {session?.user ? (
-        <div className="mt-8 flex flex-col items-center space-y-4">
-          <p className="text-lg">Logged in as: <span className="font-semibold text-blue-600">{session.user.email}</span></p>
-          <p className="text-sm text-gray-500">Role: {session.user.role}</p>
-          <form
-            action={async () => {
-              "use server"
-              await signOut()
-            }}
-          >
-            <button
-              type="submit"
-              className="bg-red-500 hover:bg-red-600 text-white font-medium py-2 px-6 rounded-md transition-colors"
-            >
-              Sign Out
-            </button>
-          </form>
-        </div>
-      ) : (
-        <div className="mt-8 flex flex-col items-center space-y-4">
-          <p className="text-xl">The store is currently under construction.</p>
-          <a
-            href="/auth/login"
-            className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-6 rounded-md transition-colors"
-          >
-            Log In
-          </a>
-        </div>
-      )}
-    </main>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="bg-white p-6 sm:p-8 rounded-lg shadow-sm border border-gray-100">
+        <ProductList initialProducts={products} />
+      </div>
+    </div>
   )
 }

@@ -7,6 +7,11 @@ declare module 'next-auth' {
       role: 'CUSTOMER' | 'ADMIN'
     } & DefaultSession['user']
   }
+
+  // Augment the User object so it has 'role' available in jwt() callback
+  interface User {
+    role?: 'CUSTOMER' | 'ADMIN'
+  }
 }
 
 declare module 'next-auth/jwt' {

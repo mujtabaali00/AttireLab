@@ -41,6 +41,8 @@ async function main() {
       price: 29.99,
       quantity: 100,
       categoryId: categoryTShirts.id,
+      colors: ['White', 'Off-White'],
+      sizes: ['S', 'M', 'L', 'XL'],
       images: [
         'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?q=80&w=800&auto=format&fit=crop',
         'https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?q=80&w=800&auto=format&fit=crop'
@@ -52,6 +54,8 @@ async function main() {
       price: 29.99,
       quantity: 150,
       categoryId: categoryTShirts.id,
+      colors: ['Black'],
+      sizes: ['M', 'L', 'XL'],
       images: [
         'https://images.unsplash.com/photo-1618354691373-d851c5c3a990?q=80&w=800&auto=format&fit=crop',
       ]
@@ -62,6 +66,8 @@ async function main() {
       price: 59.99,
       quantity: 50,
       categoryId: categoryHoodies.id,
+      colors: ['Grey', 'Dark Grey'],
+      sizes: ['M', 'L'],
       images: [
         'https://images.unsplash.com/photo-1556821840-3a63f95609a7?q=80&w=800&auto=format&fit=crop',
       ]
@@ -72,6 +78,8 @@ async function main() {
       price: 79.99,
       quantity: 75,
       categoryId: categoryPants.id,
+      colors: ['Blue', 'Light Blue'],
+      sizes: ['30', '32', '34', '36'],
       images: [
         'https://images.unsplash.com/photo-1542272604-787c3835535d?q=80&w=800&auto=format&fit=crop',
         'https://images.unsplash.com/photo-1624378439575-d8705ad7ae80?q=80&w=800&auto=format&fit=crop'
@@ -83,6 +91,8 @@ async function main() {
       price: 89.99,
       quantity: 40,
       categoryId: categoryPants.id,
+      colors: ['Washed Blue'],
+      sizes: ['32', '34'],
       images: [
         'https://images.unsplash.com/photo-1541099649105-f69ad21f3246?q=80&w=800&auto=format&fit=crop',
       ]
@@ -101,6 +111,8 @@ async function main() {
         price: p.price,
         quantity: p.quantity,
         categoryId: p.categoryId,
+        colors: p.colors,
+        sizes: p.sizes,
         images: {
           create: p.images.map(url => ({ url }))
         }

@@ -69,6 +69,8 @@ model Product {
   price       Decimal        @db.Decimal(10, 2)
   quantity    Int            @default(0)
   categoryId  String
+  colors      String[]       @default([])
+  sizes       String[]       @default([])
   category    Category       @relation(fields: [categoryId], references: [id])
   images      ProductImage[]
   orderItems  OrderItem[]
@@ -106,6 +108,8 @@ model OrderItem {
   productName String
   unitPrice   Decimal @db.Decimal(10, 2)
   quantity    Int
+  color       String?
+  size        String?
 }
 
 model PasswordResetToken {
