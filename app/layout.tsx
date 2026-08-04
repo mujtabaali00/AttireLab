@@ -1,25 +1,22 @@
 import type { Metadata } from 'next'
 import './globals.css'
-
-export const metadata: Metadata = {
-  title: 'AttireLab',
-  description: 'Premium Clothing',
-}
-
 import { Providers } from '@/components/layout/Providers'
 import { Navbar } from '@/components/layout/Navbar'
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
+export const metadata: Metadata = {
+  title: { template: '%s | AttireLab', default: 'AttireLab — Premium Clothing' },
+  description: 'Shop the latest clothing at AttireLab.',
+}
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className="bg-gray-50 min-h-screen">
+      <body className="bg-gray-100 min-h-screen">
         <Providers>
           <Navbar />
-          {children}
+          <main className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 py-4 sm:py-6">
+            {children}
+          </main>
         </Providers>
       </body>
     </html>
