@@ -3,6 +3,7 @@ import { db } from '@/lib/db'
 import { forgotPasswordSchema } from '@/lib/validations/auth.schema'
 import { apiSuccess, apiError } from '@/lib/api-response'
 import { sendPasswordResetEmail } from '@/lib/mail'
+import { logger } from '@/lib/logger'
 
 export async function POST(req: Request) {
   try {
@@ -47,7 +48,7 @@ export async function POST(req: Request) {
       message: 'If that email exists, a reset link has been sent' 
     })
   } catch (error) {
-    console.error('[FORGOT_PASSWORD_ERROR]', error)
+    logger.error({ error }, 'FORGOT_PASSWORD_ERROR')
     return apiError('Internal server error', 500)
   }
 }

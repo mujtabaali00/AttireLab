@@ -6,7 +6,14 @@ export const createProductSchema = z.object({
   price: z.number().positive('Price must be positive').multipleOf(0.01, 'Max 2 decimal places'),
   quantity: z.number().int().nonnegative('Quantity must be zero or more'),
   categoryId: z.string().cuid('Invalid category ID'),
-  imageUrls: z.array(z.string()).min(1, 'At least 1 image is required').max(5, 'At most 5 images are allowed')
+  imageUrls: z.array(z.string()).min(1, 'At least 1 image is required').max(5, 'At most 5 images are allowed'),
+  specifications: z.array(z.object({
+    color: z.enum(['red', 'blue', 'brown', 'grey']).optional().nullable(),
+    size: z.enum(['xs', 's', 'm', 'l']).optional().nullable(),
+    quantity: z.number().int().nonnegative('Quantity must be zero or more'),
+    price: z.number().positive().optional().nullable(),
+    imageUrl: z.string().optional().nullable()
+  })).optional()
 })
 
 export const updateProductSchema = createProductSchema.partial()

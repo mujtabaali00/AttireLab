@@ -1,7 +1,8 @@
 'use client'
 
 import Link from 'next/link'
-import { ShoppingBag, Bell } from 'lucide-react'
+import Image from 'next/image'
+import { ShoppingBag, Bell, ChevronDown } from 'lucide-react'
 import { useCartStore } from '@/lib/store/cart.store'
 import { useEffect, useRef, useState } from 'react'
 import { useSession, signOut } from 'next-auth/react'
@@ -30,8 +31,8 @@ export function Navbar() {
     return () => document.removeEventListener('mousedown', handleClick)
   }, [])
 
-  // Don't show navbar on auth routes
-  if (pathname.startsWith('/auth') || pathname.startsWith('/admin/login')) {
+  // Don't show navbar on auth or admin routes
+  if (pathname.startsWith('/auth') || pathname.startsWith('/admin')) {
     return null
   }
 
@@ -66,24 +67,41 @@ export function Navbar() {
               <div className="relative" ref={menuRef}>
                 <button
                   onClick={() => setMenuOpen(v => !v)}
-                  className="text-sm font-medium text-blue-500 hover:text-blue-600 transition-colors flex items-center gap-0.5"
+                  className="flex items-center gap-2 hover:bg-gray-50 p-1 rounded-md transition-colors"
                 >
-                  {/* Show first name only on small screens */}
-                  <span className="hidden sm:inline">{session.user?.name?.split(' ')[0]}</span>
-                  <span className="sm:hidden">Menu</span>
+                  <div className="w-6 h-6 rounded-full bg-gray-200 overflow-hidden relative border border-gray-300">
+                    {session.user?.image ? (
+                      <Image src={session.user.image} alt={session.user.name || 'User'} fill className="object-cover" />
+                    ) : (
+                      <span className="absolute inset-0 flex items-center justify-center text-[10px] font-medium text-gray-500 uppercase">
+                        {session.user?.name?.[0] || 'U'}
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-sm font-medium text-gray-700 hidden sm:inline">{session.user?.name}</span>
+                  <ChevronDown className="w-4 h-4 text-gray-500" />
                 </button>
 
                 {menuOpen && (
-                  <div className="absolute right-0 top-full mt-2 w-36 bg-white rounded-md border border-gray-200 shadow-lg py-1 z-50">
-                    <p className="px-3 py-1.5 text-xs text-gray-400 font-medium border-b border-gray-100">
-                      Top Use...
+                                <div className="absolute right-0 top-full mt-2 w-44 bg-white rounded-md border border-gray-200 shadow-lg py-1 z-50">
+                    <p className="px-3 py-1.5 text-xs text-gray-400 font-medium border-b border-gray-100 truncate">
+                      {session.user?.name}
                     </p>
+                    {session.user?.role === 'ADMIN' && (
+                      <Link
+                        href="/admin/products"
+                        onClick={() => setMenuOpen(false)}
+                        className="block px-3 py-2 text-sm text-blue-600 font-medium hover:bg-gray-50"
+                      >
+                        Admin Panel
+                      </Link>
+                    )}
                     <Link
                       href="/orders"
                       onClick={() => setMenuOpen(false)}
                       className="block px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
                     >
-                      Orders
+                      My Orders
                     </Link>
                     <button
                       onClick={() => { setMenuOpen(false); signOut({ callbackUrl: '/auth/login' }) }}

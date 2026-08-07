@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs'
 import { db } from '@/lib/db'
 import { registerSchema } from '@/lib/validations/auth.schema'
 import { apiSuccess, apiError } from '@/lib/api-response'
+import { logger } from '@/lib/logger'
 
 export async function POST(req: Request) {
   try {
@@ -34,9 +35,10 @@ export async function POST(req: Request) {
       }
     })
 
+    logger.info({ email }, 'New user registered successfully')
     return apiSuccess({ message: 'Account created successfully' }, 201)
   } catch (error) {
-    console.error('[REGISTER_ERROR]', error)
+    logger.error({ error }, 'REGISTER_ERROR')
     return apiError('Internal server error', 500)
   }
 }

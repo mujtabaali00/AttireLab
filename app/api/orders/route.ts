@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { auth } from '@/auth'
+import { logger } from '@/lib/logger'
 
 interface CartItemInput {
   productId: string
@@ -38,29 +39,56 @@ export async function POST(req: Request) {
     // Fetch products to verify stock and price
     const productIds = items.map(i => i.productId)
     const products = await db.product.findMany({
-      where: { id: { in: productIds } }
+      where: { id: { in: productIds } },
+      include: { specifications: true }
     })
 
     let subtotal = 0
     const orderItemsData: OrderItemPayload[] = []
+    const stockUpdates: { id: string, type: 'product' | 'spec', specId?: string, quantity: number }[] = []
 
     for (const item of items) {
       const product = products.find(p => p.id === item.productId)
       if (!product) {
         return NextResponse.json({ error: `Product not found: ${item.productId}` }, { status: 404 })
       }
-      if (product.quantity < item.quantity) {
-        return NextResponse.json({ error: `Insufficient stock for ${product.name}` }, { status: 409 })
+
+      // Determine stock and price based on specifications if any match
+      let availableStock = product.quantity
+      let itemPrice = Number(product.price)
+      let specId: string | undefined = undefined
+
+      if (item.color || item.size) {
+        const spec = product.specifications.find(
+          s => (s.color === item.color || (!s.color && !item.color)) &&
+               (s.size === item.size || (!s.size && !item.size))
+        )
+        if (spec) {
+          availableStock = spec.quantity
+          itemPrice = spec.price ? Number(spec.price) : itemPrice
+          specId = spec.id
+        }
       }
 
-      subtotal += Number(product.price) * item.quantity
+      if (availableStock < item.quantity) {
+        return NextResponse.json({ error: `Insufficient stock for ${product.name} ${item.color || ''} ${item.size || ''}` }, { status: 409 })
+      }
+
+      subtotal += itemPrice * item.quantity
       orderItemsData.push({
         productId: product.id,
         productName: product.name,
-        unitPrice: Number(product.price),
+        unitPrice: itemPrice,
         quantity: item.quantity,
-        color: item.color ?? null,
-        size: item.size ?? null,
+        color: item.color || null,
+        size: item.size || null,
+      })
+
+      stockUpdates.push({
+        id: product.id,
+        type: specId ? 'spec' : 'product',
+        specId,
+        quantity: item.quantity
       })
     }
 
@@ -82,13 +110,23 @@ export async function POST(req: Request) {
         }
       })
 
-      for (const item of items) {
-        await tx.product.update({
-          where: { id: item.productId },
-          data: {
-            quantity: { decrement: item.quantity }
-          }
-        })
+      for (const update of stockUpdates) {
+        if (update.type === 'product') {
+          await tx.product.update({
+            where: { id: update.id },
+            data: { quantity: { decrement: update.quantity } }
+          })
+        } else if (update.type === 'spec' && update.specId) {
+          await tx.productSpecification.update({
+            where: { id: update.specId },
+            data: { quantity: { decrement: update.quantity } }
+          })
+          // Optionally also decrement base product total stock
+          await tx.product.update({
+            where: { id: update.id },
+            data: { quantity: { decrement: update.quantity } }
+          })
+        }
       }
 
       return order
@@ -96,7 +134,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ data: result }, { status: 201 })
   } catch (error) {
-    console.error('Order creation error:', error)
+    logger.error({ error }, 'Order creation error')
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
   }
 }

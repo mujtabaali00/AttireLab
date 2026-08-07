@@ -5,6 +5,7 @@ import { db } from '@/lib/db'
 import bcrypt from 'bcryptjs'
 import { loginSchema } from '@/lib/validations/auth.schema'
 import { authConfig } from './auth.config'
+import { logger } from '@/lib/logger'
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
@@ -26,15 +27,20 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           })
 
           if (!user || !user.passwordHash) {
+            logger.warn({ email }, 'Failed login attempt: User not found or no password hash')
             return null
           }
 
           const passwordsMatch = await bcrypt.compare(password, user.passwordHash)
 
           if (passwordsMatch) {
+            logger.info({ userId: user.id, email: user.email, role: user.role }, 'User authenticated via credentials')
             return user
+          } else {
+            logger.warn({ email }, 'Failed login attempt: Password mismatch')
           }
-        } catch {
+        } catch (error) {
+          logger.error({ error }, 'Error in authorize function')
           return null
         }
 

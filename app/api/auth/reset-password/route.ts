@@ -2,6 +2,7 @@ import bcrypt from 'bcryptjs'
 import { db } from '@/lib/db'
 import { resetPasswordSchema } from '@/lib/validations/auth.schema'
 import { apiSuccess, apiError } from '@/lib/api-response'
+import { logger } from '@/lib/logger'
 
 export async function POST(req: Request) {
   try {
@@ -41,7 +42,7 @@ export async function POST(req: Request) {
 
     return apiSuccess({ message: 'Password updated successfully' })
   } catch (error) {
-    console.error('[RESET_PASSWORD_ERROR]', error)
+    logger.error({ error }, 'RESET_PASSWORD_ERROR')
     return apiError('Internal server error', 500)
   }
 }
