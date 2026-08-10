@@ -38,7 +38,8 @@ export function ProductsClientTable({ products }: { products: ProductWithDetails
       if (res.ok) {
         router.refresh()
       } else {
-        alert('Failed to delete product')
+        const data = await res.json().catch(() => ({}))
+        alert(data.error || 'Failed to delete product')
       }
     } catch {
       alert('An error occurred while deleting')

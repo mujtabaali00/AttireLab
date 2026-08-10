@@ -1,5 +1,8 @@
 import { z } from 'zod'
 
+const COLORS = ['red', 'blue', 'green', 'yellow', 'brown', 'grey', 'black', 'white', 'navy', 'maroon', 'pink', 'purple', 'orange', 'beige'] as const
+const SIZES = ['xs', 's', 'm', 'l', 'xl', 'xxl'] as const
+
 export const createProductSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters').max(100, 'Name must be at most 100 characters'),
   description: z.string().optional(),
@@ -8,8 +11,8 @@ export const createProductSchema = z.object({
   categoryId: z.string().cuid('Invalid category ID'),
   imageUrls: z.array(z.string()).min(1, 'At least 1 image is required').max(5, 'At most 5 images are allowed'),
   specifications: z.array(z.object({
-    color: z.enum(['red', 'blue', 'brown', 'grey']).optional().nullable(),
-    size: z.enum(['xs', 's', 'm', 'l']).optional().nullable(),
+    color: z.enum(COLORS).optional().nullable(),
+    size: z.enum(SIZES).optional().nullable(),
     quantity: z.number().int().nonnegative('Quantity must be zero or more'),
     price: z.number().positive().optional().nullable(),
     imageUrl: z.string().optional().nullable()

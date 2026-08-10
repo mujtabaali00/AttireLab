@@ -97,6 +97,31 @@ export async function POST(req: Request) {
 
     // Transaction to create order and decrement stock
     const result = await db.$transaction(async (tx) => {
+      // Re-verify stock inside transaction to prevent negative stock from race conditions
+      for (const update of stockUpdates) {
+        if (update.type === 'product') {
+          const p = await tx.product.findUnique({ where: { id: update.id } })
+          if (!p || p.quantity < update.quantity) throw new Error(`Insufficient stock for product ${update.id}`)
+          await tx.product.update({
+            where: { id: update.id },
+            data: { quantity: { decrement: update.quantity } }
+          })
+        } else if (update.type === 'spec' && update.specId) {
+          const s = await tx.productSpecification.findUnique({ where: { id: update.specId } })
+          if (!s || s.quantity < update.quantity) throw new Error(`Insufficient stock for variant ${update.specId}`)
+          await tx.productSpecification.update({
+            where: { id: update.specId },
+            data: { quantity: { decrement: update.quantity } }
+          })
+          const p = await tx.product.findUnique({ where: { id: update.id } })
+          if (!p || p.quantity < update.quantity) throw new Error(`Insufficient stock for product ${update.id}`)
+          await tx.product.update({
+            where: { id: update.id },
+            data: { quantity: { decrement: update.quantity } }
+          })
+        }
+      }
+
       const order = await tx.order.create({
         data: {
           userId: session.user.id,
@@ -110,30 +135,23 @@ export async function POST(req: Request) {
         }
       })
 
-      for (const update of stockUpdates) {
-        if (update.type === 'product') {
-          await tx.product.update({
-            where: { id: update.id },
-            data: { quantity: { decrement: update.quantity } }
-          })
-        } else if (update.type === 'spec' && update.specId) {
-          await tx.productSpecification.update({
-            where: { id: update.specId },
-            data: { quantity: { decrement: update.quantity } }
-          })
-          // Optionally also decrement base product total stock
-          await tx.product.update({
-            where: { id: update.id },
-            data: { quantity: { decrement: update.quantity } }
-          })
+      // Create notification
+      await tx.notification.create({
+        data: {
+          userId: session.user.id,
+          message: `Order #${order.id.slice(-8).toUpperCase()} has been placed successfully.`,
+          type: 'ORDER_CONFIRMED'
         }
-      }
+      })
 
       return order
     })
 
     return NextResponse.json({ data: result }, { status: 201 })
   } catch (error) {
+    if (error instanceof Error && error.message.startsWith('Insufficient stock')) {
+      return NextResponse.json({ error: error.message }, { status: 409 })
+    }
     logger.error({ error }, 'Order creation error')
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
   }

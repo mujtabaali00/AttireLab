@@ -6,10 +6,13 @@ export const metadata = { title: 'Products' }
 export const dynamic = 'force-dynamic'
 
 export default async function AdminProductsPage() {
-  const products = await db.product.findMany({
+  const products = (await db.product.findMany({
     include: { images: true, category: true },
     orderBy: { createdAt: 'desc' },
-  })
+  })).map(product => ({
+    ...product,
+    price: Number(product.price)
+  }))
 
   return (
     <div className="p-6 lg:p-8">

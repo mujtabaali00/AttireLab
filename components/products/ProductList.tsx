@@ -50,51 +50,51 @@ export function ProductList({ initialProducts, categories }: ProductListProps) {
   return (
     <div>
       {/* Header Row */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
-        <h2 className="text-xl font-bold text-blue-500">Our Products</h2>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        <h2 className="text-xl font-bold text-gray-900 hidden sm:block">Our Products</h2>
 
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-3 flex-wrap sm:flex-nowrap w-full sm:w-auto">
           {/* Category Dropdown */}
-          <div className="relative">
+          <div className="relative shrink-0">
             <select
               value={selectedCategory}
               onChange={e => setSelectedCategory(e.target.value)}
-              className="appearance-none border border-gray-200 rounded-md pl-3 pr-8 py-2 text-sm text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+              className="appearance-none border border-gray-200 rounded-lg pl-4 pr-10 h-11 text-sm font-medium text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 cursor-pointer w-full sm:w-auto"
             >
               <option value="all">All Categories</option>
               {categories.map(cat => (
                 <option key={cat.id} value={cat.id}>{cat.name}</option>
               ))}
             </select>
-            <ChevronDown className="w-3.5 h-3.5 text-gray-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <ChevronDown className="w-4 h-4 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
           </div>
 
           {/* Search */}
-          <div className="relative">
+          <div className="flex h-11 w-full sm:w-auto flex-1 sm:flex-none">
             <input
               type="text"
               placeholder="Search products..."
               value={search}
               onChange={e => setSearch(e.target.value)}
-              className="pl-3 pr-10 py-2 border border-gray-200 rounded-md text-sm text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 w-44"
+              className="pl-4 pr-4 border border-r-0 border-gray-200 rounded-l-lg text-sm text-gray-700 bg-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 w-full sm:w-56"
             />
-            <div className="absolute right-0 top-0 bottom-0 w-9 bg-blue-500 hover:bg-blue-600 rounded-r-md flex items-center justify-center cursor-pointer transition-colors">
+            <div className="w-11 shrink-0 bg-blue-500 rounded-r-lg flex items-center justify-center cursor-pointer transition-colors hover:bg-blue-600 shadow-sm">
               <Search className="w-4 h-4 text-white" />
             </div>
           </div>
 
           {/* Sort dropdown */}
-          <div className="relative">
+          <div className="relative shrink-0">
             <select
               value={sortBy}
               onChange={e => setSortBy(e.target.value)}
-              className="appearance-none border border-gray-200 rounded-md py-2 pl-3 pr-8 text-sm bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="appearance-none border border-gray-200 rounded-lg pl-4 pr-10 h-11 text-sm font-medium text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 cursor-pointer w-full sm:w-auto"
             >
               {SORT_OPTIONS.map(o => (
                 <option key={o.value} value={o.value}>{o.label}</option>
               ))}
             </select>
-            <ChevronDown className="w-3.5 h-3.5 text-gray-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <ChevronDown className="w-4 h-4 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
           </div>
         </div>
       </div>

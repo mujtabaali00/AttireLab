@@ -3,11 +3,12 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { signOut, useSession } from 'next-auth/react'
-import { Package, ShoppingCart, LogOut } from 'lucide-react'
+import { Package, ShoppingCart, LogOut, Tag } from 'lucide-react'
 
 const navItems = [
   { label: 'Products', href: '/admin/products', icon: Package },
   { label: 'Orders', href: '/admin/orders', icon: ShoppingCart },
+  { label: 'Categories', href: '/admin/categories', icon: Tag },
 ]
 
 export function AdminSidebar() {

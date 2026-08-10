@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect } from 'react'
 import { Plus, Minus } from 'lucide-react'
 import Image from 'next/image'
 import { useCartStore } from '@/lib/store/cart.store'
+import { toast } from 'react-hot-toast'
 
 export interface ProductSpecification {
   id: string
@@ -28,9 +29,26 @@ export interface SerializedProduct {
   specifications?: ProductSpecification[]
 }
 
+// Colour name → CSS colour value mapping
+const COLOR_CSS: Record<string, string> = {
+  red: '#ef4444',
+  blue: '#3b82f6',
+  green: '#22c55e',
+  yellow: '#eab308',
+  brown: '#92400e',
+  grey: '#9ca3af',
+  black: '#111827',
+  white: '#f9fafb',
+  navy: '#1e3a5f',
+  maroon: '#7f1d1d',
+  pink: '#ec4899',
+  purple: '#a855f7',
+  orange: '#f97316',
+  beige: '#d4b896',
+}
+
 export function ProductCard({ product }: { product: SerializedProduct }) {
   const [qty, setQty] = useState(1)
-  const [added, setAdded] = useState(false)
   const addItem = useCartStore(state => state.addItem)
 
   const hasSpecs = product.specifications && product.specifications.length > 0
@@ -68,6 +86,7 @@ export function ProductCard({ product }: { product: SerializedProduct }) {
   const maxAllowedQty = hasSpecs ? (matchingSpec?.quantity || 0) : product.quantity
   const isSelectionOutOfStock = hasSpecs && maxAllowedQty === 0
 
+  // Switch image when colour changes — use spec image if available
   const displayImage = matchingSpec?.imageUrl || product.images[0]?.url
 
   useEffect(() => {
@@ -89,8 +108,7 @@ export function ProductCard({ product }: { product: SerializedProduct }) {
       size: selectedSize || undefined,
     })
     setQty(1)
-    setAdded(true)
-    setTimeout(() => setAdded(false), 1500)
+    toast.success('Added to Cart')
   }
 
   const isOptionInStock = (type: 'color' | 'size', value: string) => {
@@ -108,14 +126,14 @@ export function ProductCard({ product }: { product: SerializedProduct }) {
 
   return (
     <div className="bg-white rounded-lg overflow-hidden flex flex-col border border-gray-100 shadow-sm hover:shadow-md transition-shadow duration-200">
-      {/* Product Image — tall rectangle matching the design */}
-      <div className="relative bg-gray-50" style={{ aspectRatio: '4/3' }}>
+      {/* Product Image */}
+      <div className="relative bg-gray-50" style={{ aspectRatio: '3/4' }}>
         {displayImage ? (
           <Image
             src={displayImage}
             alt={product.name}
             fill
-            className="object-cover"
+            className="object-cover transition-opacity duration-300"
             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
           />
         ) : (
@@ -153,16 +171,20 @@ export function ProductCard({ product }: { product: SerializedProduct }) {
               <div className="flex flex-wrap gap-1.5">
                 {allColors.map(color => {
                   const inStock = isOptionInStock('color', color)
+                  const cssColor = COLOR_CSS[color] || color
+                  const isLight = ['white', 'beige', 'yellow'].includes(color)
                   return (
                     <button
                       key={color}
                       onClick={() => setSelectedColor(color)}
                       disabled={!inStock}
-                      title={color}
+                      title={color.charAt(0).toUpperCase() + color.slice(1)}
                       className={`w-5 h-5 rounded-full border-2 transition-all flex-shrink-0 ${
-                        selectedColor === color ? 'border-blue-500 scale-110' : 'border-transparent hover:border-gray-300'
-                      } ${!inStock ? 'opacity-30 cursor-not-allowed' : ''}`}
-                      style={{ backgroundColor: color }}
+                        selectedColor === color
+                          ? isLight ? 'border-gray-500 scale-110' : 'border-blue-500 scale-110'
+                          : 'border-transparent hover:border-gray-300'
+                      } ${!inStock ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'}`}
+                      style={{ backgroundColor: cssColor }}
                     />
                   )
                 })}
@@ -196,7 +218,7 @@ export function ProductCard({ product }: { product: SerializedProduct }) {
 
         {/* Stock count */}
         <p className="text-xs text-gray-400">
-          {isTotalOutOfStock ? 'Out of stock' : `${totalStock} in stock`}
+          {isTotalOutOfStock ? 'Out of stock' : `${hasSpecs ? (matchingSpec?.quantity ?? 0) : totalStock} in stock`}
         </p>
 
         {/* Qty + Add to Cart */}
@@ -226,11 +248,9 @@ export function ProductCard({ product }: { product: SerializedProduct }) {
           <button
             onClick={handleAdd}
             disabled={isTotalOutOfStock || isSelectionOutOfStock || (hasSpecs && !matchingSpec)}
-            className={`flex-1 py-1.5 text-white text-xs font-semibold rounded transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${
-              added ? 'bg-green-500' : 'bg-blue-500 hover:bg-blue-600'
-            }`}
+            className="flex-1 py-1.5 text-white text-xs font-semibold rounded transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed bg-blue-500 hover:bg-blue-600"
           >
-            {added ? 'Added!' : 'Add to Cart'}
+            Add to Cart
           </button>
         </div>
       </div>

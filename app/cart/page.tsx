@@ -18,6 +18,7 @@ export default function CartPage() {
   const [itemToDelete, setItemToDelete] = useState<string | null>(null)
   const [showAddressModal, setShowAddressModal] = useState(false)
   const [address, setAddress] = useState('')
+  const [recentAddresses, setRecentAddresses] = useState<string[]>([])
   const [isPlacingOrder, setIsPlacingOrder] = useState(false)
   const [toastMessage, setToastMessage] = useState('')
 
@@ -33,6 +34,16 @@ export default function CartPage() {
       }
     }
   }, [session, mounted, items.length])
+
+  // Load recent addresses from local storage
+  useEffect(() => {
+    if (mounted) {
+      try {
+        const stored = localStorage.getItem('recentAddresses')
+        if (stored) setRecentAddresses(JSON.parse(stored).slice(0, 3))
+      } catch {}
+    }
+  }, [mounted])
 
   if (!mounted || status === 'loading') return null
 
@@ -70,10 +81,18 @@ export default function CartPage() {
         const data = await res.json()
         throw new Error(data.error || 'Failed to place order')
       }
+      
+      const newAddresses = [address, ...recentAddresses.filter(a => a !== address)].slice(0, 3)
+      setRecentAddresses(newAddresses)
+      localStorage.setItem('recentAddresses', JSON.stringify(newAddresses))
+
       clearCart()
       setShowAddressModal(false)
-      setToastMessage('Order placed successfully! Redirecting to your orders...')
-      setTimeout(() => { router.push('/orders') }, 2000)
+      const data = await res.json()
+      const orderId = data.data?.id
+      
+      setToastMessage('Order placed successfully! Redirecting to your order details...')
+      setTimeout(() => { router.push(`/orders/${orderId || ''}`) }, 2000)
     } catch (error: unknown) {
       const msg = error instanceof Error ? error.message : 'An error occurred'
       alert(msg)
@@ -127,10 +146,7 @@ export default function CartPage() {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="border-b border-gray-200 text-xs text-gray-400 bg-gray-50/50">
-                  <th className="px-4 py-3 font-medium w-8 text-center">
-                    <input type="checkbox" className="rounded border-gray-300" disabled />
-                  </th>
-                  <th className="py-3 font-medium">Product</th>
+                  <th className="pl-6 py-3 font-medium">Product</th>
                   <th className="py-3 font-medium text-center">Color</th>
                   <th className="py-3 font-medium text-center">Size</th>
                   <th className="py-3 font-medium text-center w-28">Qty</th>
@@ -142,10 +158,7 @@ export default function CartPage() {
               <tbody className="divide-y divide-gray-100">
                 {items.map(item => (
                   <tr key={item.id} className="text-xs sm:text-sm hover:bg-gray-50/30 transition-colors">
-                    <td className="px-4 py-4 text-center">
-                      <input type="checkbox" className="rounded border-gray-300 text-blue-500 focus:ring-blue-500" />
-                    </td>
-                    <td className="py-4">
+                    <td className="py-4 pl-6">
                       <div className="flex items-center gap-3">
                         <div className="relative w-10 h-10 bg-gray-50 rounded-lg overflow-hidden shrink-0">
                           {item.imageUrl ? (
@@ -286,6 +299,26 @@ export default function CartPage() {
                 placeholder="Enter your full shipping address&#10;e.g. 123 Main St, Karachi, Pakistan"
                 autoFocus
               />
+              
+              {recentAddresses.length > 0 && (
+                <div className="mt-3">
+                  <p className="text-xs font-semibold text-gray-500 mb-2">Recent Addresses:</p>
+                  <div className="space-y-2">
+                    {recentAddresses.map((addr, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => setAddress(addr)}
+                        className="w-full text-left text-xs bg-gray-50 hover:bg-blue-50 border border-gray-200 hover:border-blue-200 rounded-md p-2 transition-colors truncate"
+                        title={addr}
+                      >
+                        {addr}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div className="flex justify-end gap-3 mt-4">
                 <button
                   type="button"

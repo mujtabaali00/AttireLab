@@ -16,7 +16,8 @@ import {
   ImageIcon,
   CheckCircle,
   PlusCircle,
-  Trash2
+  Trash2,
+  Info
 } from 'lucide-react'
 
 type FormValues = z.infer<typeof createProductSchema>
@@ -72,11 +73,15 @@ export default function NewProductPage() {
   // Watch specifications to sum up quantity if present
   const specifications = watch('specifications')
 
-  // Auto-sum quantity if specifications exist
+  // Auto-sum quantity from spec quantities when specs have been filled
   useEffect(() => {
     if (specifications && specifications.length > 0) {
-      const sum = specifications.reduce((acc, spec) => acc + (Number(spec.quantity) || 0), 0)
-      setValue('quantity', sum)
+      // Only auto-sum when at least one spec has a non-zero quantity entered
+      const hasAnyQty = specifications.some(s => Number(s.quantity) > 0)
+      if (hasAnyQty) {
+        const sum = specifications.reduce((acc, spec) => acc + (Number(spec.quantity) || 0), 0)
+        setValue('quantity', sum)
+      }
     }
   }, [specifications, setValue])
 
@@ -228,6 +233,8 @@ export default function NewProductPage() {
     }
   }
 
+  const hasSpecs = specFields.length > 0
+
   return (
     <div className="p-6 lg:p-8 max-w-4xl">
       {/* Header */}
@@ -260,6 +267,81 @@ export default function NewProductPage() {
       )}
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+        {/* General Images */}
+        <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
+          <label className="block text-sm font-bold text-gray-900 mb-1">
+            Product Images <span className="text-red-500">*</span>
+          </label>
+          <p className="text-xs text-gray-500 mb-4">Upload up to 5 images. The first image is the main display image.</p>
+
+          <div
+            onClick={() => !isUploading && fileInputRef.current?.click()}
+            className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-colors ${
+              isUploading
+                ? 'border-blue-300 bg-blue-50 cursor-wait'
+                : 'border-gray-300 hover:border-blue-400 hover:bg-blue-50'
+            }`}
+          >
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/jpg,image/png,image/webp"
+              multiple
+              onChange={handleFileChange}
+              className="hidden"
+              disabled={isUploading || uploadedUrls.length >= 5}
+            />
+            {isUploading ? (
+              <div className="flex flex-col items-center gap-2">
+                <Loader2 className="w-8 h-8 text-blue-400 animate-spin" />
+                <p className="text-sm text-blue-600 font-medium">Uploading...</p>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center gap-2">
+                <Upload className="w-8 h-8 text-gray-400" />
+                <p className="text-sm text-gray-600 font-medium">Click to upload images</p>
+                <p className="text-xs text-gray-400">JPG, PNG, WEBP up to 5MB each</p>
+              </div>
+            )}
+          </div>
+
+          {uploadError && <p className="mt-1.5 text-xs text-red-500">{uploadError}</p>}
+          {errors.imageUrls && <p className="mt-1.5 text-xs text-red-500">{errors.imageUrls.message as string}</p>}
+
+          {uploadedUrls.length > 0 && (
+            <div className="mt-4 flex flex-wrap gap-2">
+              {uploadedUrls.map((url, i) => (
+                <div key={url} className="relative group">
+                  <div className="relative w-20 h-20 rounded-lg overflow-hidden border border-gray-200 bg-gray-50">
+                    <Image src={url} alt={`Image ${i + 1}`} fill className="object-cover" sizes="80px" />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => removeImage(url)}
+                    className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                  {i === 0 && (
+                    <span className="absolute bottom-0 left-0 right-0 bg-blue-500/80 text-white text-[9px] font-bold text-center py-0.5 rounded-b-lg">
+                      MAIN
+                    </span>
+                  )}
+                </div>
+              ))}
+              {uploadedUrls.length < 5 && (
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-20 h-20 rounded-lg border-2 border-dashed border-gray-300 flex flex-col items-center justify-center gap-1 hover:border-blue-400 hover:bg-blue-50 transition-colors"
+                >
+                  <ImageIcon className="w-5 h-5 text-gray-400" />
+                  <span className="text-[10px] text-gray-400">Add more</span>
+                </button>
+              )}
+            </div>
+          )}
+        </div>
         
         {/* Basic Details Card */}
         <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm space-y-5">
@@ -292,7 +374,7 @@ export default function NewProductPage() {
 
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-                Base Price ($) <span className="text-red-500">*</span>
+                Base Price (Rs) <span className="text-red-500">*</span>
               </label>
               <input
                 {...register('price', { valueAsNumber: true })}
@@ -375,46 +457,56 @@ export default function NewProductPage() {
                 min="0"
                 step="1"
                 placeholder="0"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition bg-gray-50"
-                readOnly={specFields.length > 0}
+                className={`w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition ${hasSpecs ? 'bg-gray-50 text-gray-500' : 'bg-white'}`}
+                readOnly={hasSpecs}
               />
-              {specFields.length > 0 && <p className="text-[10px] text-gray-500 mt-1">Auto-calculated from specifications</p>}
+              {hasSpecs && (
+                <p className="text-[10px] text-blue-500 mt-1 flex items-center gap-1">
+                  <Info className="w-3 h-3" /> Auto-calculated from variant quantities below
+                </p>
+              )}
               {errors.quantity && <p className="mt-1 text-xs text-red-500">{errors.quantity.message}</p>}
             </div>
           </div>
         </div>
 
+
+
         {/* Specifications Card */}
         <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm space-y-4">
           <div className="flex items-center justify-between border-b border-gray-100 pb-3">
             <div>
-              <h2 className="text-sm font-bold text-gray-900">Product Specifications (Variants)</h2>
-              <p className="text-xs text-gray-500 mt-0.5">Add sizes and colors for this product</p>
+              <h2 className="text-sm font-bold text-gray-900">Product Variants (Optional)</h2>
+              <p className="text-xs text-gray-500 mt-0.5">
+                Add color/size variants. Leave empty for products with no variants (e.g. perfume).
+              </p>
             </div>
             <button
               type="button"
               onClick={() => appendSpec({ quantity: 0 })}
-              className="text-xs font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1"
+              className="text-xs font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1 shrink-0"
             >
               <PlusCircle className="w-3.5 h-3.5" /> Add Variant
             </button>
           </div>
 
           {specFields.length === 0 ? (
-            <div className="text-center py-6 text-sm text-gray-400">
-              No specifications added. The product will use the base price and stock.
+            <div className="text-center py-6 text-sm text-gray-400 bg-gray-50 rounded-lg border border-dashed border-gray-200">
+              <p className="font-medium text-gray-500 mb-1">No variants added</p>
+              <p className="text-xs">Products without variants (e.g. perfumes, accessories) use the base price & stock above.</p>
+              <p className="text-xs mt-1">For clothing, add variants with colour and/or size.</p>
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-3">
               {specFields.map((field, index) => (
                 <div key={field.id} className="grid grid-cols-12 gap-3 items-start bg-gray-50 p-3 rounded-lg border border-gray-200">
                   {/* Variant Image */}
                   <div className="col-span-12 sm:col-span-2 flex flex-col gap-1">
                     <label className="text-[10px] font-semibold text-gray-500 uppercase">Image</label>
-                    <div className="relative w-12 h-12 bg-white rounded-md border border-gray-300 flex items-center justify-center overflow-hidden group">
+                    <div className="relative w-14 h-14 bg-white rounded-md border border-gray-300 flex items-center justify-center overflow-hidden group cursor-pointer">
                       {watch(`specifications.${index}.imageUrl`) ? (
                         <>
-                          <Image src={watch(`specifications.${index}.imageUrl`)!} alt="Variant" fill className="object-cover" sizes="48px" />
+                          <Image src={watch(`specifications.${index}.imageUrl`)!} alt="Variant" fill className="object-cover" sizes="56px" />
                           <button
                             type="button"
                             onClick={() => setValue(`specifications.${index}.imageUrl`, undefined)}
@@ -426,8 +518,9 @@ export default function NewProductPage() {
                       ) : specUploadStates[index] ? (
                         <Loader2 className="w-4 h-4 text-blue-500 animate-spin" />
                       ) : (
-                        <label className="cursor-pointer w-full h-full flex items-center justify-center hover:bg-gray-50">
+                        <label className="cursor-pointer w-full h-full flex flex-col items-center justify-center hover:bg-gray-50 gap-1">
                           <ImageIcon className="w-4 h-4 text-gray-400" />
+                          <span className="text-[9px] text-gray-400">Upload</span>
                           <input
                             type="file"
                             accept="image/jpeg,image/png,image/webp"
@@ -442,49 +535,64 @@ export default function NewProductPage() {
                   {/* Attributes */}
                   <div className="col-span-12 sm:col-span-9 grid grid-cols-2 md:grid-cols-4 gap-3">
                     <div>
-                      <label className="text-[10px] font-semibold text-gray-500 uppercase mb-1 block">Color</label>
+                      <label className="text-[10px] font-semibold text-gray-500 uppercase mb-1 block">Colour</label>
                       <select
                         {...register(`specifications.${index}.color`)}
-                        className="w-full border border-gray-300 rounded text-xs px-2 py-1.5 bg-white"
+                        className="w-full border border-gray-300 rounded text-xs px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
                       >
-                        <option value="">Any</option>
+                        <option value="">— Any —</option>
                         <option value="red">Red</option>
                         <option value="blue">Blue</option>
+                        <option value="green">Green</option>
+                        <option value="yellow">Yellow</option>
                         <option value="brown">Brown</option>
                         <option value="grey">Grey</option>
+                        <option value="black">Black</option>
+                        <option value="white">White</option>
+                        <option value="navy">Navy</option>
+                        <option value="maroon">Maroon</option>
+                        <option value="pink">Pink</option>
+                        <option value="purple">Purple</option>
+                        <option value="orange">Orange</option>
+                        <option value="beige">Beige</option>
                       </select>
                     </div>
                     <div>
                       <label className="text-[10px] font-semibold text-gray-500 uppercase mb-1 block">Size</label>
                       <select
                         {...register(`specifications.${index}.size`)}
-                        className="w-full border border-gray-300 rounded text-xs px-2 py-1.5 bg-white"
+                        className="w-full border border-gray-300 rounded text-xs px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
                       >
-                        <option value="">Any</option>
+                        <option value="">— Any —</option>
                         <option value="xs">XS</option>
                         <option value="s">S</option>
                         <option value="m">M</option>
                         <option value="l">L</option>
+                        <option value="xl">XL</option>
+                        <option value="xxl">XXL</option>
                       </select>
                     </div>
                     <div>
-                      <label className="text-[10px] font-semibold text-gray-500 uppercase mb-1 block">Stock *</label>
+                      <label className="text-[10px] font-semibold text-gray-500 uppercase mb-1 block">
+                        Stock <span className="text-red-400">*</span>
+                      </label>
                       <input
                         {...register(`specifications.${index}.quantity`, { valueAsNumber: true })}
                         type="number"
                         min="0"
-                        className="w-full border border-gray-300 rounded text-xs px-2 py-1.5"
+                        placeholder="0"
+                        className="w-full border border-gray-300 rounded text-xs px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-500"
                       />
                     </div>
                     <div>
-                      <label className="text-[10px] font-semibold text-gray-500 uppercase mb-1 block">Price ($)</label>
+                      <label className="text-[10px] font-semibold text-gray-500 uppercase mb-1 block">Price (Rs)</label>
                       <input
                         {...register(`specifications.${index}.price`, { valueAsNumber: true, setValueAs: v => v === '' ? undefined : Number(v) })}
                         type="number"
                         step="0.01"
                         min="0"
                         placeholder="Base"
-                        className="w-full border border-gray-300 rounded text-xs px-2 py-1.5"
+                        className="w-full border border-gray-300 rounded text-xs px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-500"
                       />
                     </div>
                   </div>
@@ -494,89 +602,13 @@ export default function NewProductPage() {
                     <button
                       type="button"
                       onClick={() => removeSpec(index)}
-                      className="text-red-400 hover:text-red-600 p-1"
+                      className="text-red-400 hover:text-red-600 p-1 hover:bg-red-50 rounded transition-colors"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
                 </div>
               ))}
-            </div>
-          )}
-        </div>
-
-        {/* General Images */}
-        <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
-          <label className="block text-sm font-bold text-gray-900 mb-1">
-            General Product Images <span className="text-red-500">*</span>
-          </label>
-          <p className="text-xs text-gray-500 mb-4">Upload up to 5 general images for this product.</p>
-
-          <div
-            onClick={() => !isUploading && fileInputRef.current?.click()}
-            className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-colors ${
-              isUploading
-                ? 'border-blue-300 bg-blue-50 cursor-wait'
-                : 'border-gray-300 hover:border-blue-400 hover:bg-blue-50'
-            }`}
-          >
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/jpeg,image/jpg,image/png,image/webp"
-              multiple
-              onChange={handleFileChange}
-              className="hidden"
-              disabled={isUploading || uploadedUrls.length >= 5}
-            />
-            {isUploading ? (
-              <div className="flex flex-col items-center gap-2">
-                <Loader2 className="w-8 h-8 text-blue-400 animate-spin" />
-                <p className="text-sm text-blue-600 font-medium">Uploading...</p>
-              </div>
-            ) : (
-              <div className="flex flex-col items-center gap-2">
-                <Upload className="w-8 h-8 text-gray-400" />
-                <p className="text-sm text-gray-600 font-medium">Click to upload images</p>
-                <p className="text-xs text-gray-400">JPG, PNG, WEBP up to 5MB each</p>
-              </div>
-            )}
-          </div>
-
-          {uploadError && <p className="mt-1.5 text-xs text-red-500">{uploadError}</p>}
-          {errors.imageUrls && <p className="mt-1.5 text-xs text-red-500">{errors.imageUrls.message as string}</p>}
-
-          {uploadedUrls.length > 0 && (
-            <div className="mt-4 flex flex-wrap gap-2">
-              {uploadedUrls.map((url, i) => (
-                <div key={url} className="relative group">
-                  <div className="relative w-20 h-20 rounded-lg overflow-hidden border border-gray-200 bg-gray-50">
-                    <Image src={url} alt={`Image ${i + 1}`} fill className="object-cover" sizes="80px" />
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => removeImage(url)}
-                    className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
-                  {i === 0 && (
-                    <span className="absolute bottom-0 left-0 right-0 bg-blue-500/80 text-white text-[9px] font-bold text-center py-0.5 rounded-b-lg">
-                      MAIN
-                    </span>
-                  )}
-                </div>
-              ))}
-              {uploadedUrls.length < 5 && (
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="w-20 h-20 rounded-lg border-2 border-dashed border-gray-300 flex flex-col items-center justify-center gap-1 hover:border-blue-400 hover:bg-blue-50 transition-colors"
-                >
-                  <ImageIcon className="w-5 h-5 text-gray-400" />
-                  <span className="text-[10px] text-gray-400">Add more</span>
-                </button>
-              )}
             </div>
           )}
         </div>

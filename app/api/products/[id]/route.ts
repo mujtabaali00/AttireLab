@@ -119,17 +119,40 @@ export async function DELETE(_req: NextRequest, { params }: RouteContext) {
 
     const { id } = await params
 
-    const existing = await db.product.findUnique({ where: { id } })
+    const existing = await db.product.findUnique({
+      where: { id },
+      include: { _count: { select: { orderItems: true } } },
+    })
     if (!existing) {
       return apiError('Product not found', 404)
     }
 
-    await db.product.delete({ where: { id } })
+    // If the product has been ordered we cannot hard-delete it (FK constraint).
+    // Cascade-delete images/specs first, then delete the product.
+    // Order items retain the productName snapshot so data is not lost.
+    await db.$transaction(async (tx) => {
+      // Detach order items from this product (set productId to a sentinel is not possible
+      // because productId is required; instead we rely on onDelete behaviour already set
+      // on images/specs, but OrderItem has no cascade. We skip deletion if items exist.)
+      const orderItemCount = existing._count.orderItems
+      if (orderItemCount > 0) {
+        // Cannot delete — product has order history
+        throw new Error(`PRODUCT_HAS_ORDERS:${orderItemCount}`)
+      }
+      // Safe to delete — no order items
+      await tx.productImage.deleteMany({ where: { productId: id } })
+      await tx.productSpecification.deleteMany({ where: { productId: id } })
+      await tx.product.delete({ where: { id } })
+    })
 
     logger.info({ productId: id, adminId: session.user.id }, 'Product deleted')
 
     return apiSuccess({ deleted: true })
   } catch (error) {
+    if (error instanceof Error && error.message.startsWith('PRODUCT_HAS_ORDERS:')) {
+      const count = error.message.split(':')[1]
+      return apiError(`Cannot delete: this product appears in ${count} order(s). Remove it from all orders first.`, 409)
+    }
     logger.error({ error }, 'Failed to delete product')
     return apiError('Failed to delete product', 500)
   }
