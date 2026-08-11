@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import Image from 'next/image'
-import { ShoppingBag, Bell, ChevronDown, Package, LogOut, Check } from 'lucide-react'
+import { ShoppingBag, Bell, ChevronDown, Package, LogOut, ShoppingCart, X, Truck } from 'lucide-react'
 import { useCartStore } from '@/lib/store/cart.store'
 import { useEffect, useRef, useState } from 'react'
 import { useSession, signOut } from 'next-auth/react'
@@ -17,64 +17,96 @@ interface Notification {
   createdAt: string
 }
 
+function NotifIcon({ type }: { type: string }) {
+  if (type === 'ORDER_CONFIRMED') return (
+    <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center shrink-0">
+      <Package className="w-4 h-4 text-green-600" />
+    </div>
+  )
+  if (type === 'ORDER_CANCELLED') return (
+    <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center shrink-0">
+      <X className="w-4 h-4 text-red-600" />
+    </div>
+  )
+  if (type === 'ADDED_TO_CART') return (
+    <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
+      <ShoppingCart className="w-4 h-4 text-blue-600" />
+    </div>
+  )
+  if (type === 'SYSTEM') return (
+    <div className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center shrink-0">
+      <Truck className="w-4 h-4 text-orange-600" />
+    </div>
+  )
+  return (
+    <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center shrink-0">
+      <Bell className="w-4 h-4 text-gray-500" />
+    </div>
+  )
+}
+
 export function Navbar() {
   const [mounted, setMounted] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const [notifOpen, setNotifOpen] = useState(false)
   const [notifications, setNotifications] = useState<Notification[]>([])
-  
+  const [notifTab, setNotifTab] = useState<'unread' | 'all'>('unread')
+
   const menuRef = useRef<HTMLDivElement>(null)
   const notifRef = useRef<HTMLDivElement>(null)
-  
+
   const { getTotalItems, fetchCart, isInitialized } = useCartStore()
   const { data: session } = useSession()
   const pathname = usePathname()
-  
+
   const isAdminRoute = pathname.startsWith('/admin')
 
   useEffect(() => {
     setMounted(true)
-    if (!isInitialized) {
-      fetchCart()
-    }
+    if (!isInitialized) fetchCart()
   }, [fetchCart, isInitialized])
 
+  const fetchNotifications = async () => {
+    if (!session?.user) return
+    try {
+      const res = await fetch('/api/notifications')
+      const data = await res.json()
+      if (data.data) setNotifications(data.data)
+    } catch {}
+  }
+
   useEffect(() => {
-    if (session?.user) {
-      fetch('/api/notifications')
-        .then(res => res.json())
-        .then(data => {
-          if (data.data) setNotifications(data.data)
-        })
-        .catch(() => {})
-    }
-  }, [session, notifOpen])
+    fetchNotifications()
+    const interval = setInterval(fetchNotifications, 30_000)
+    return () => clearInterval(interval)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session])
+
+  useEffect(() => {
+    if (notifOpen) fetchNotifications()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [notifOpen])
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setMenuOpen(false)
-      }
-      if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
-        setNotifOpen(false)
-      }
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false)
+      if (notifRef.current && !notifRef.current.contains(e.target as Node)) setNotifOpen(false)
     }
     document.addEventListener('mousedown', handleClick)
     return () => document.removeEventListener('mousedown', handleClick)
   }, [])
 
-  if (pathname.startsWith('/auth')) {
-    return null
-  }
+  if (pathname.startsWith('/auth')) return null
 
   const unreadCount = notifications.filter(n => !n.read).length
+  const displayedNotifs = notifTab === 'unread' ? notifications.filter(n => !n.read) : notifications
 
   const handleMarkAsRead = async (id?: string) => {
     try {
       await fetch('/api/notifications/mark-read', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(id ? { id } : {})
+        body: JSON.stringify(id ? { id } : {}),
       })
       if (id) {
         setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n))
@@ -106,51 +138,94 @@ export function Navbar() {
 
             {session && (
               <div className="relative" ref={notifRef}>
-                <button 
+                <button
                   onClick={() => setNotifOpen(!notifOpen)}
                   className="relative text-gray-500 hover:text-blue-500 transition-colors p-1"
                 >
                   <Bell className="w-5 h-5" />
                   {unreadCount > 0 && (
-                    <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full border border-white" />
+                    <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center px-0.5 border border-white">
+                      {unreadCount > 9 ? '9+' : unreadCount}
+                    </span>
                   )}
                 </button>
 
                 {notifOpen && (
-                  <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-lg border border-gray-100 shadow-xl overflow-hidden z-50">
-                    <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 bg-gray-50">
-                      <h3 className="text-sm font-semibold text-gray-800">Notifications</h3>
+                  <div className="absolute right-0 top-full mt-2 w-[340px] bg-white rounded-xl border border-gray-100 shadow-xl overflow-hidden z-50">
+                    {/* Header */}
+                    <div className="flex items-center justify-between px-4 pt-4 pb-2">
+                      <h3 className="text-base font-bold text-gray-900">Notifications</h3>
                       {unreadCount > 0 && (
-                        <button onClick={() => handleMarkAsRead()} className="text-xs text-blue-500 hover:text-blue-600 font-medium flex items-center gap-1">
-                          <Check className="w-3.5 h-3.5" /> Mark all as read
+                        <button
+                          onClick={() => handleMarkAsRead()}
+                          className="text-xs text-blue-500 hover:text-blue-600 font-semibold"
+                        >
+                          Mark all as read
                         </button>
                       )}
                     </div>
-                    <div className="max-h-80 overflow-y-auto">
-                      {notifications.length === 0 ? (
-                        <div className="p-8 text-center text-gray-400 text-sm">No notifications yet</div>
-                      ) : (
-                        <div className="divide-y divide-gray-50">
-                          {notifications.map(notif => (
-                            <div 
-                              key={notif.id} 
-                              onClick={() => { if(!notif.read) handleMarkAsRead(notif.id) }}
-                              className={`p-4 cursor-pointer transition-colors hover:bg-gray-50 ${!notif.read ? 'bg-blue-50/30' : ''}`}
-                            >
-                              <div className="flex gap-3">
-                                <div className={`w-2 h-2 mt-1.5 rounded-full shrink-0 ${!notif.read ? 'bg-blue-500' : 'bg-transparent'}`} />
-                                <div>
-                                  <p className={`text-sm ${!notif.read ? 'text-gray-900 font-medium' : 'text-gray-600'}`}>
-                                    {notif.message}
-                                  </p>
-                                  <p className="text-xs text-gray-400 mt-1">
-                                    {formatDistanceToNow(new Date(notif.createdAt), { addSuffix: true })}
-                                  </p>
-                                </div>
-                              </div>
-                            </div>
-                          ))}
+
+                    {/* Tabs */}
+                    <div className="flex border-b border-gray-100 px-4">
+                      <button
+                        onClick={() => setNotifTab('unread')}
+                        className={`pb-2 mr-6 text-sm font-medium border-b-2 transition-colors ${
+                          notifTab === 'unread'
+                            ? 'border-blue-500 text-blue-600'
+                            : 'border-transparent text-gray-400 hover:text-gray-600'
+                        }`}
+                      >
+                        Unread{' '}
+                        {unreadCount > 0 && (
+                          <span className="ml-1 text-xs bg-blue-100 text-blue-600 rounded-full px-1.5 py-0.5">
+                            {unreadCount}
+                          </span>
+                        )}
+                      </button>
+                      <button
+                        onClick={() => setNotifTab('all')}
+                        className={`pb-2 text-sm font-medium border-b-2 transition-colors ${
+                          notifTab === 'all'
+                            ? 'border-blue-500 text-blue-600'
+                            : 'border-transparent text-gray-400 hover:text-gray-600'
+                        }`}
+                      >
+                        All
+                      </button>
+                    </div>
+
+                    {/* List */}
+                    <div className="max-h-72 overflow-y-auto divide-y divide-gray-50">
+                      {displayedNotifs.length === 0 ? (
+                        <div className="p-8 text-center">
+                          <Bell className="w-8 h-8 text-gray-200 mx-auto mb-2" />
+                          <p className="text-sm text-gray-400">
+                            {notifTab === 'unread' ? 'All caught up!' : 'No notifications yet'}
+                          </p>
                         </div>
+                      ) : (
+                        displayedNotifs.map(notif => (
+                          <div
+                            key={notif.id}
+                            onClick={() => { if (!notif.read) handleMarkAsRead(notif.id) }}
+                            className={`px-4 py-3 cursor-pointer transition-colors hover:bg-gray-50 flex items-start gap-3 ${
+                              !notif.read ? 'bg-blue-50/40' : ''
+                            }`}
+                          >
+                            <NotifIcon type={notif.type} />
+                            <div className="flex-1 min-w-0">
+                              <p className={`text-sm leading-snug ${!notif.read ? 'text-gray-900 font-semibold' : 'text-gray-600'}`}>
+                                {notif.message}
+                              </p>
+                              <p className="text-xs text-gray-400 mt-0.5">
+                                {formatDistanceToNow(new Date(notif.createdAt), { addSuffix: true })}
+                              </p>
+                            </div>
+                            {!notif.read && (
+                              <span className="w-2 h-2 bg-blue-500 rounded-full shrink-0 mt-1.5" />
+                            )}
+                          </div>
+                        ))
                       )}
                     </div>
                   </div>
@@ -184,14 +259,25 @@ export function Navbar() {
                       <p className="text-xs text-gray-500 truncate">{session.user?.email}</p>
                     </div>
                     {session.user?.role === 'ADMIN' && !isAdminRoute && (
-                      <Link href="/admin/products" onClick={() => setMenuOpen(false)} className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-blue-600 transition-colors">
+                      <Link
+                        href="/admin/products"
+                        onClick={() => setMenuOpen(false)}
+                        className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-blue-600 transition-colors"
+                      >
                         Admin Panel
                       </Link>
                     )}
-                    <Link href="/orders" onClick={() => setMenuOpen(false)} className="flex items-center gap-2 px-4 py-2 text-sm text-blue-500 font-medium hover:bg-blue-50 transition-colors">
+                    <Link
+                      href="/orders"
+                      onClick={() => setMenuOpen(false)}
+                      className="flex items-center gap-2 px-4 py-2 text-sm text-blue-500 font-medium hover:bg-blue-50 transition-colors"
+                    >
                       <Package className="w-4 h-4" /> My Orders
                     </Link>
-                    <button onClick={() => { setMenuOpen(false); signOut({ callbackUrl: '/auth/login' }) }} className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-500 font-medium hover:bg-red-50 transition-colors">
+                    <button
+                      onClick={() => { setMenuOpen(false); signOut({ callbackUrl: '/auth/login' }) }}
+                      className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-500 font-medium hover:bg-red-50 transition-colors"
+                    >
                       <LogOut className="w-4 h-4" /> Logout
                     </button>
                   </div>

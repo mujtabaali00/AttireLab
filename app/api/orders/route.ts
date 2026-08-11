@@ -22,8 +22,14 @@ interface OrderItemPayload {
 export async function POST(req: Request) {
   try {
     const session = await auth()
-    if (!session?.user) {
+    if (!session?.user?.email) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // Always look up user by email to get the real DB id (avoids stale JWT id mismatches)
+    const dbUser = await db.user.findUnique({ where: { email: session.user.email } })
+    if (!dbUser) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
 
     const body = await req.json()
@@ -124,7 +130,7 @@ export async function POST(req: Request) {
 
       const order = await tx.order.create({
         data: {
-          userId: session.user.id,
+          userId: dbUser.id,
           subtotal,
           tax,
           total,
@@ -135,11 +141,11 @@ export async function POST(req: Request) {
         }
       })
 
-      // Create notification
+      // Create notification for the user
       await tx.notification.create({
         data: {
-          userId: session.user.id,
-          message: `Order #${order.id.slice(-8).toUpperCase()} has been placed successfully.`,
+          userId: dbUser.id,
+          message: `Your order #${order.id.slice(-8).toUpperCase()} has been placed successfully.`,
           type: 'ORDER_CONFIRMED'
         }
       })
@@ -160,12 +166,18 @@ export async function POST(req: Request) {
 export async function GET() {
   try {
     const session = await auth()
-    if (!session?.user) {
+    if (!session?.user?.email) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    // Look up user by email to get real DB id
+    const dbUser = await db.user.findUnique({ where: { email: session.user.email } })
+    if (!dbUser) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    }
+
     const orders = await db.order.findMany({
-      where: session.user.role === 'ADMIN' ? {} : { userId: session.user.id },
+      where: dbUser.role === 'ADMIN' ? {} : { userId: dbUser.id },
       include: {
         _count: { select: { items: true } },
         user: { select: { name: true } }

@@ -6,6 +6,7 @@ import { createProductSchema } from '@/lib/validations/product.schema'
 import { serializeProduct } from '@/lib/product-serializer'
 import { logger } from '@/lib/logger'
 import { ZodError } from 'zod'
+import { ProductStatus } from '@prisma/client'
 
 // GET /api/products — public, paginated
 export async function GET(req: NextRequest) {
@@ -18,12 +19,12 @@ export async function GET(req: NextRequest) {
     const limit = Math.min(100, Number(searchParams.get('limit') || 20))
     const search = searchParams.get('search') || ''
     const categoryId = searchParams.get('categoryId') || undefined
-    const statusParam = searchParams.get('status') || undefined
+    const statusParam = searchParams.get('status') as ProductStatus | null
 
     const where = {
       ...(search ? { name: { contains: search, mode: 'insensitive' as const } } : {}),
       ...(categoryId ? { categoryId } : {}),
-      ...(!isAdmin ? { status: 'ACTIVE' } : statusParam ? { status: statusParam } : {}),
+      ...(!isAdmin ? { status: ProductStatus.ACTIVE } : statusParam ? { status: statusParam } : {}),
     }
 
     const [products, total] = await Promise.all([

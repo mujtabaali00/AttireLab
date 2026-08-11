@@ -26,10 +26,12 @@ export async function POST(req: NextRequest) {
     }
 
     const cart = await getCart()
+    if (!cart) return apiError('Could not get cart', 500)
 
     // Find the product/specification to check actual stock
     let maxStock = 0
     let specId = null
+    let productName = ''
 
     if (color || size) {
       const spec = await db.productSpecification.findFirst({
@@ -42,6 +44,12 @@ export async function POST(req: NextRequest) {
       const prod = await db.product.findUnique({ where: { id: productId } })
       if (!prod) return apiError('Product not found', 404)
       maxStock = prod.quantity
+      productName = prod.name
+    }
+
+    if (!productName) {
+      const prod = await db.product.findUnique({ where: { id: productId }, select: { name: true } })
+      productName = prod?.name || 'Item'
     }
 
     if (maxStock < quantity) {
@@ -87,6 +95,17 @@ export async function POST(req: NextRequest) {
         where: { id: cart.id },
         data: { expiresAt: new Date(Date.now() + APP_CONSTANTS.CART.EXPIRATION_HOURS * 60 * 60 * 1000) }
       })
+
+      // Create ADDED_TO_CART notification for logged-in users
+      if (cart.userId) {
+        await tx.notification.create({
+          data: {
+            userId: cart.userId,
+            message: `"${productName}" has been added to your cart.`,
+            type: 'ADDED_TO_CART'
+          }
+        })
+      }
     })
 
     const updatedCart = await getCart()
