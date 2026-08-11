@@ -1,6 +1,7 @@
 import { writeFile, unlink } from 'fs/promises'
 import { join } from 'path'
 import { v4 as uuidv4 } from 'uuid'
+import { logger } from '@/lib/logger'
 
 
 export async function saveImageLocally(buffer: Buffer, mimeType: string): Promise<string> {
@@ -22,6 +23,6 @@ export async function deleteLocalImage(url: string): Promise<void> {
   try {
     await unlink(filePath)
   } catch (error) {
-    console.error(`Failed to delete image at ${filePath}:`, error)
+    logger.error({ error, filePath }, 'Failed to delete local image')
   }
 }

@@ -1,4 +1,5 @@
-import nodemailer from 'nodemailer';
+import nodemailer from 'nodemailer'
+import { logger } from '@/lib/logger'
 
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST || 'smtp.gmail.com',
@@ -8,10 +9,10 @@ const transporter = nodemailer.createTransport({
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASSWORD,
   },
-});
+})
 
 export async function sendPasswordResetEmail(email: string, resetUrl: string) {
-  const from = process.env.EMAIL_FROM || '"AttireLab" <noreply@attirelab.com>';
+  const from = process.env.EMAIL_FROM || '"AttireLab" <noreply@attirelab.com>'
 
   const mailOptions = {
     from,
@@ -30,14 +31,18 @@ export async function sendPasswordResetEmail(email: string, resetUrl: string) {
         <p style="font-size: 14px; color: #6b7280;">If you didn't request a password reset, you can safely ignore this email.</p>
       </div>
     `,
-  };
-
-  if (!process.env.SMTP_USER || !process.env.SMTP_PASSWORD) {
-    console.warn('⚠️ SMTP credentials not configured. Email not sent.');
-    console.warn('Would have sent to:', email);
-    console.warn('Reset URL:', resetUrl);
-    return;
   }
 
-  await transporter.sendMail(mailOptions);
+  if (!process.env.SMTP_USER || !process.env.SMTP_PASSWORD) {
+    logger.warn({ email, resetUrl }, 'SMTP credentials not configured. Email dispatch skipped.')
+    return
+  }
+
+  try {
+    await transporter.sendMail(mailOptions)
+    logger.info({ email }, 'Password reset email sent successfully')
+  } catch (err) {
+    logger.error({ err, email }, 'Failed to send password reset email')
+    throw err
+  }
 }

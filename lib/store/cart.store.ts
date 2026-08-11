@@ -1,65 +1,155 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
 
 export interface CartItem {
-  id: string; // unique id, e.g., productId-color-size
-  productId: string;
-  name: string;
-  price: number;
-  imageUrl: string;
-  color?: string;
-  size?: string;
-  quantity: number;
-  maxStock: number;
+  id: string
+  productId: string
+  name: string
+  price: number
+  imageUrl: string
+  quantity: number
+  maxStock: number // Used mostly for UI limits now
+  color?: string
+  size?: string
 }
 
 interface CartStore {
-  items: CartItem[];
-  addItem: (item: Omit<CartItem, 'id'>) => void;
-  removeItem: (id: string) => void;
-  updateQuantity: (id: string, quantity: number) => void;
-  clearCart: () => void;
-  getTotalItems: () => number;
-  getSubtotal: () => number;
+  items: CartItem[]
+  expiresAt: string | null
+  isLoading: boolean
+  isInitialized: boolean
+  fetchCart: () => Promise<void>
+  addItem: (item: Omit<CartItem, 'id' | 'maxStock'>) => Promise<void>
+  removeItem: (id: string) => Promise<void>
+  updateQuantity: (id: string, quantity: number) => Promise<void>
+  clearCart: () => Promise<void>
+  getTotalItems: () => number
+  getSubtotal: () => number
 }
 
-export const useCartStore = create<CartStore>()(
-  persist(
-    (set, get) => ({
-      items: [],
-      addItem: (item) => {
-        const id = `${item.productId}-${item.color || 'none'}-${item.size || 'none'}`;
-        const currentItems = get().items;
-        const existingItem = currentItems.find(i => i.id === id);
+// Convert DB Cart to our frontend state format
+const mapDbCartToState = (dbCart: any): { items: CartItem[], expiresAt: string | null } => {
+  if (!dbCart) return { items: [], expiresAt: null }
+  
+  const items = dbCart.items.map((item: any) => ({
+    id: item.id,
+    productId: item.productId,
+    name: item.product.name,
+    price: Number(item.product.specifications?.find((s: any) => s.color === item.color && s.size === item.size)?.price || item.product.price),
+    imageUrl: item.product.specifications?.find((s: any) => s.color === item.color && s.size === item.size)?.imageUrl || item.product.images[0]?.url || '',
+    quantity: item.quantity,
+    maxStock: 99, // Backend enforces actual stock limits now
+    color: item.color || undefined,
+    size: item.size || undefined,
+  }))
 
-        if (existingItem) {
-          set({
-            items: currentItems.map(i =>
-              i.id === id
-                ? { ...i, quantity: Math.min(i.quantity + item.quantity, i.maxStock) }
-                : i
-            ),
-          });
-        } else {
-          set({ items: [...currentItems, { ...item, id }] });
-        }
-      },
-      removeItem: (id) => {
-        set({ items: get().items.filter(i => i.id !== id) });
-      },
-      updateQuantity: (id, quantity) => {
-        set({
-          items: get().items.map(i =>
-            i.id === id ? { ...i, quantity: Math.max(1, Math.min(quantity, i.maxStock)) } : i
-          ),
-        });
-      },
-      clearCart: () => set({ items: [] }),
-      getTotalItems: () => get().items.reduce((total, item) => total + item.quantity, 0),
-      getSubtotal: () => get().items.reduce((total, item) => total + (item.price * item.quantity), 0),
-    }),
-    {
-      name: 'attirelab-cart',
+  return { items, expiresAt: dbCart.expiresAt }
+}
+
+export const useCartStore = create<CartStore>((set, get) => ({
+  items: [],
+  expiresAt: null,
+  isLoading: false,
+  isInitialized: false,
+
+  fetchCart: async () => {
+    set({ isLoading: true })
+    try {
+      const res = await fetch('/api/cart')
+      const data = await res.json()
+      if (res.ok && data.data) {
+        const { items, expiresAt } = mapDbCartToState(data.data)
+        set({ items, expiresAt, isInitialized: true })
+      } else {
+        set({ items: [], expiresAt: null, isInitialized: true })
+      }
+    } catch {
+      set({ items: [], expiresAt: null, isInitialized: true })
+    } finally {
+      set({ isLoading: false })
     }
-  )
-);
+  },
+
+  addItem: async (item) => {
+    set({ isLoading: true })
+    try {
+      const res = await fetch('/api/cart', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          productId: item.productId,
+          color: item.color,
+          size: item.size,
+          quantity: item.quantity,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to add item')
+      
+      const { items, expiresAt } = mapDbCartToState(data.data)
+      set({ items, expiresAt })
+    } catch (error: any) {
+      console.error('Cart Error:', error.message)
+      throw error
+    } finally {
+      set({ isLoading: false })
+    }
+  },
+
+  removeItem: async (id) => {
+    set({ isLoading: true })
+    try {
+      const res = await fetch(`/api/cart?itemId=${id}`, { method: 'DELETE' })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to remove item')
+      
+      const { items, expiresAt } = mapDbCartToState(data.data)
+      set({ items, expiresAt })
+    } catch (error: any) {
+      console.error('Cart Error:', error.message)
+      throw error
+    } finally {
+      set({ isLoading: false })
+    }
+  },
+
+  updateQuantity: async (id, quantity) => {
+    set({ isLoading: true })
+    try {
+      const res = await fetch('/api/cart', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ itemId: id, quantity }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to update quantity')
+      
+      const { items, expiresAt } = mapDbCartToState(data.data)
+      set({ items, expiresAt })
+    } catch (error: any) {
+      console.error('Cart Error:', error.message)
+      throw error
+    } finally {
+      set({ isLoading: false })
+    }
+  },
+
+  clearCart: async () => {
+    set({ isLoading: true })
+    try {
+      const res = await fetch('/api/cart', { method: 'DELETE' })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to clear cart')
+      
+      const { items, expiresAt } = mapDbCartToState(data.data)
+      set({ items, expiresAt })
+    } catch (error: any) {
+      console.error('Cart Error:', error.message)
+      throw error
+    } finally {
+      set({ isLoading: false })
+    }
+  },
+
+  getTotalItems: () => get().items.reduce((total, item) => total + item.quantity, 0),
+  getSubtotal: () => get().items.reduce((total, item) => total + item.price * item.quantity, 0),
+}))

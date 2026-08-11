@@ -12,12 +12,25 @@ enum Role {
   ADMIN
 }
 
+enum ProductStatus {
+  ACTIVE
+  INACTIVE
+}
+
 enum OrderStatus {
   PENDING
   PROCESSING
   SHIPPED
   DELIVERED
   CANCELLED
+}
+
+enum NotificationType {
+  ORDER_CONFIRMED
+  ADDED_TO_CART
+  ORDER_CANCELLED
+  PASSWORD_RESET
+  SYSTEM
 }
 
 model User {
@@ -33,6 +46,7 @@ model User {
   accounts      Account[]
   orders        Order[]
   resetTokens   PasswordResetToken[]
+  notifications Notification[]
 }
 
 model Account {
@@ -63,19 +77,20 @@ model Category {
 }
 
 model Product {
-  id          String         @id @default(cuid())
-  name        String
-  description String?
-  price       Decimal        @db.Decimal(10, 2)
-  quantity    Int            @default(0)
-  categoryId  String
-  colors      String[]       @default([])
-  sizes       String[]       @default([])
-  category    Category       @relation(fields: [categoryId], references: [id])
-  images      ProductImage[]
-  orderItems  OrderItem[]
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
+  id            String                 @id @default(cuid())
+  name          String
+  description   String?
+  price         Decimal                @db.Decimal(10, 2)
+  quantity      Int                    @default(0)
+  status        ProductStatus          @default(ACTIVE)
+  categoryId    String?
+  category      Category?              @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  images        ProductImage[]
+  specifications ProductSpecification[]
+  orderItems    OrderItem[]
+  cartItems     CartItem[]
+  createdAt     DateTime               @default(now())
+  updatedAt     DateTime               @updatedAt
 }
 
 model ProductImage {
@@ -112,6 +127,17 @@ model OrderItem {
   size        String?
 }
 
+model ProductSpecification {
+  id        String  @id @default(cuid())
+  productId String
+  color     String? // 'red', 'blue', 'brown', 'grey'
+  size      String? // 'xs', 's', 'm', 'l'
+  quantity  Int     @default(0)
+  price     Decimal? @db.Decimal(10, 2)
+  imageUrl  String?
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+}
+
 model PasswordResetToken {
   id        String   @id @default(cuid())
   userId    String
@@ -120,4 +146,35 @@ model PasswordResetToken {
   expiresAt DateTime
   used      Boolean  @default(false)
   createdAt DateTime @default(now())
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  message   String
+  type      NotificationType @default(SYSTEM)
+  read      Boolean          @default(false)
+  createdAt DateTime         @default(now())
+}
+
+model Cart {
+  id        String     @id @default(cuid())
+  userId    String?
+  sessionId String?    @unique
+  items     CartItem[]
+  expiresAt DateTime
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+}
+
+model CartItem {
+  id        String   @id @default(cuid())
+  cartId    String
+  cart      Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product  @relation(fields: [productId], references: [id])
+  quantity  Int
+  color     String?
+  size      String?
 }
