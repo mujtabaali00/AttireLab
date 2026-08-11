@@ -38,6 +38,7 @@ export default function LoginPage() {
     const result = await signIn("credentials", {
       email: data.email,
       password: data.password,
+      rememberMe: !!data.rememberMe,
       redirect: false,
     })
 
@@ -147,7 +148,7 @@ export default function LoginPage() {
 
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            <input type="checkbox" id="remember" className="rounded border-gray-300 text-blue-600 focus:ring-blue-600 h-4 w-4" />
+            <input type="checkbox" id="remember" className="rounded border-gray-300 text-blue-600 focus:ring-blue-600 h-4 w-4" {...register("rememberMe")} />
             <Label htmlFor="remember" className="text-xs font-normal">Remember me</Label>
           </div>
           <Link href="/auth/forgot-password" className="text-xs text-blue-500 hover:underline">

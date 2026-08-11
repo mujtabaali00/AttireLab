@@ -7,13 +7,14 @@ import Link from 'next/link'
 import { ArrowLeft, Trash2, Plus, Minus, X, ShoppingBag } from 'lucide-react'
 import { useCartStore } from '@/lib/store/cart.store'
 import { useSession } from 'next-auth/react'
+import { toast } from 'react-hot-toast'
 
 export default function CartPage() {
   const [mounted, setMounted] = useState(false)
   const router = useRouter()
   const { data: session, status } = useSession()
 
-  const { items, updateQuantity, removeItem, clearCart, getSubtotal } = useCartStore()
+  const { items, expiresAt, updateQuantity, removeItem, clearCart, getSubtotal } = useCartStore()
 
   const [itemToDelete, setItemToDelete] = useState<string | null>(null)
   const [showAddressModal, setShowAddressModal] = useState(false)
@@ -21,6 +22,7 @@ export default function CartPage() {
   const [recentAddresses, setRecentAddresses] = useState<string[]>([])
   const [isPlacingOrder, setIsPlacingOrder] = useState(false)
   const [toastMessage, setToastMessage] = useState('')
+  const [timeLeft, setTimeLeft] = useState<string | null>(null)
 
   useEffect(() => { setMounted(true) }, [])
 
@@ -39,11 +41,31 @@ export default function CartPage() {
   useEffect(() => {
     if (mounted) {
       try {
-        const stored = localStorage.getItem('recentAddresses')
+        const stored = localStorage.getItem('attirelab_recent_addresses')
         if (stored) setRecentAddresses(JSON.parse(stored).slice(0, 3))
       } catch {}
     }
   }, [mounted])
+
+  useEffect(() => {
+    if (!expiresAt) {
+      setTimeLeft(null)
+      return
+    }
+    const interval = setInterval(() => {
+      const diff = new Date(expiresAt).getTime() - Date.now()
+      if (diff <= 0) {
+        setTimeLeft('Expired')
+        clearInterval(interval)
+        // Let the store handle fetchCart to refresh if it's expired
+      } else {
+        const mins = Math.floor(diff / 60000)
+        const secs = Math.floor((diff % 60000) / 1000)
+        setTimeLeft(`${mins}:${secs.toString().padStart(2, '0')}`)
+      }
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [expiresAt])
 
   if (!mounted || status === 'loading') return null
 
@@ -84,7 +106,7 @@ export default function CartPage() {
       
       const newAddresses = [address, ...recentAddresses.filter(a => a !== address)].slice(0, 3)
       setRecentAddresses(newAddresses)
-      localStorage.setItem('recentAddresses', JSON.stringify(newAddresses))
+      localStorage.setItem('attirelab_recent_addresses', JSON.stringify(newAddresses))
 
       clearCart()
       setShowAddressModal(false)
@@ -95,7 +117,7 @@ export default function CartPage() {
       setTimeout(() => { router.push(`/orders/${orderId || ''}`) }, 2000)
     } catch (error: unknown) {
       const msg = error instanceof Error ? error.message : 'An error occurred'
-      alert(msg)
+      toast.error(msg)
     } finally {
       setIsPlacingOrder(false)
     }
@@ -127,17 +149,29 @@ export default function CartPage() {
       )}
 
       <div className="p-4 sm:p-6 lg:p-8">
-        {/* Title */}
-        <div className="mb-5 flex items-center justify-between">
-          <Link href="/" className="inline-flex items-center text-blue-500 hover:text-blue-600 font-semibold text-lg">
+        {/* Title & Timer */}
+        <div className="mb-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <Link href="/" className="inline-flex items-center text-blue-500 hover:text-blue-600 font-semibold text-lg w-fit">
             <ArrowLeft className="w-4 h-4 mr-1.5" /> Your Shopping Bag
           </Link>
-          <button
-            onClick={() => setItemToDelete('__all__')}
-            className="text-xs text-red-400 hover:text-red-600 flex items-center gap-1"
-          >
-            <Trash2 className="w-3.5 h-3.5" /> Clear all
-          </button>
+          
+          <div className="flex items-center gap-4">
+            {timeLeft && (
+              <div className="text-xs font-semibold bg-orange-50 text-orange-600 px-3 py-1.5 rounded-full border border-orange-100 shadow-sm flex items-center">
+                <span className="relative flex h-2 w-2 mr-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-orange-500"></span>
+                </span>
+                Stock reserved for: {timeLeft}
+              </div>
+            )}
+            <button
+              onClick={() => setItemToDelete('__all__')}
+              className="text-xs text-red-400 hover:text-red-600 flex items-center gap-1 font-medium bg-red-50 hover:bg-red-100 px-2.5 py-1.5 rounded-lg transition-colors"
+            >
+              <Trash2 className="w-3.5 h-3.5" /> Clear all
+            </button>
+          </div>
         </div>
 
         {/* Table */}

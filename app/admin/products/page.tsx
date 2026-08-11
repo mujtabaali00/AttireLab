@@ -6,10 +6,17 @@ export const metadata = { title: 'Products' }
 export const dynamic = 'force-dynamic'
 
 export default async function AdminProductsPage() {
-  const products = (await db.product.findMany({
-    include: { images: true, category: true },
-    orderBy: { createdAt: 'desc' },
-  })).map(product => ({
+  const [dbProducts, categories] = await Promise.all([
+    db.product.findMany({
+      include: { images: true, category: true },
+      orderBy: { createdAt: 'desc' },
+    }),
+    db.category.findMany({
+      orderBy: { name: 'asc' }
+    })
+  ])
+
+  const products = dbProducts.map(product => ({
     ...product,
     price: Number(product.price)
   }))
@@ -36,7 +43,7 @@ export default async function AdminProductsPage() {
         </div>
       </div>
 
-      <ProductsClientTable products={products} />
+      <ProductsClientTable products={products} categories={categories} />
     </div>
   )
 }

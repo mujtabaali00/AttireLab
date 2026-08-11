@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Loader2, Plus, Trash2, Tag } from 'lucide-react'
+import { toast } from 'react-hot-toast'
 
 interface Category {
   id: string
@@ -58,14 +59,14 @@ export default function AdminCategoriesPage() {
     setDeletingId(id)
     try {
       const res = await fetch(`/api/categories/${id}`, { method: 'DELETE' })
-      if (res.ok) {
-        setCategories(prev => prev.filter(c => c.id !== id))
-      } else {
+      if (!res.ok) {
         const data = await res.json()
-        alert(data.error || 'Failed to delete')
+        toast.error(data.error || 'Failed to delete')
+      } else {
+        setCategories(prev => prev.filter(c => c.id !== id))
       }
     } catch {
-      alert('Network error')
+      toast.error('Network error')
     } finally {
       setDeletingId(null)
     }

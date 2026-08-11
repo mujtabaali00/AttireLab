@@ -10,15 +10,20 @@ import { ZodError } from 'zod'
 // GET /api/products — public, paginated
 export async function GET(req: NextRequest) {
   try {
+    const session = await auth()
+    const isAdmin = session?.user?.role === 'ADMIN'
+    
     const { searchParams } = new URL(req.url)
     const page = Math.max(1, Number(searchParams.get('page') || 1))
     const limit = Math.min(100, Number(searchParams.get('limit') || 20))
     const search = searchParams.get('search') || ''
     const categoryId = searchParams.get('categoryId') || undefined
+    const statusParam = searchParams.get('status') || undefined
 
     const where = {
       ...(search ? { name: { contains: search, mode: 'insensitive' as const } } : {}),
       ...(categoryId ? { categoryId } : {}),
+      ...(!isAdmin ? { status: 'ACTIVE' } : statusParam ? { status: statusParam } : {}),
     }
 
     const [products, total] = await Promise.all([

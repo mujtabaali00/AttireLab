@@ -16,6 +16,11 @@ export const authConfig = {
       if (user) {
         token.id = user.id
         token.role = user.role || 'CUSTOMER'
+        
+        // Custom expiration logic based on rememberMe
+        const rememberMe = (user as any).rememberMe
+        const hours = rememberMe ? 24 : 12
+        token.exp = Math.floor(Date.now() / 1000) + (hours * 60 * 60)
       }
       return token
     },

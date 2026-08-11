@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Pencil, Trash2, Loader2 } from 'lucide-react'
+import { toast } from 'react-hot-toast'
 
 interface ProductActionsProps {
   productId: string
@@ -21,12 +22,12 @@ export function ProductActions({ productId, productName }: ProductActionsProps) 
       const res = await fetch(`/api/products/${productId}`, { method: 'DELETE' })
       if (!res.ok) {
         const data = await res.json()
-        alert(data.error || 'Failed to delete product')
+        toast.error(data.error || 'Failed to delete product')
         return
       }
       router.refresh()
     } catch {
-      alert('Failed to delete product')
+      toast.error('Failed to delete product')
     } finally {
       setIsDeleting(false)
       setShowConfirm(false)

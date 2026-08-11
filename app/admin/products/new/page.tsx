@@ -19,6 +19,7 @@ import {
   Trash2,
   Info
 } from 'lucide-react'
+import { toast } from 'react-hot-toast'
 
 type FormValues = z.infer<typeof createProductSchema>
 
@@ -146,7 +147,7 @@ export default function NewProductPage() {
         setValue(`specifications.${index}.imageUrl`, data.data.urls[0])
       }
     } catch {
-      alert('Upload failed')
+      toast.error('Upload failed')
     } finally {
       setSpecUploadStates(prev => ({ ...prev, [index]: false }))
     }

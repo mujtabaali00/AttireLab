@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { ArrowUpRight, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react'
+import { toast } from 'react-hot-toast'
 
 // Map UI Statuses to DB Statuses
 // DB Enum: PENDING, PROCESSING, SHIPPED, DELIVERED, CANCELLED
@@ -52,10 +53,10 @@ export function OrdersTable({ orders, isAdmin = false }: OrdersTableProps) {
       if (res.ok) {
         window.location.reload()
       } else {
-        alert('Failed to update status')
+        toast.error('Failed to update status')
       }
     } catch {
-      alert('Failed to update status')
+      toast.error('Failed to update status')
     } finally {
       setUpdatingId(null)
     }

@@ -26,7 +26,7 @@ export function Navbar() {
   const menuRef = useRef<HTMLDivElement>(null)
   const notifRef = useRef<HTMLDivElement>(null)
   
-  const totalItems = useCartStore((state) => state.getTotalItems())
+  const { getTotalItems, fetchCart, isInitialized } = useCartStore()
   const { data: session } = useSession()
   const pathname = usePathname()
   
@@ -34,7 +34,10 @@ export function Navbar() {
 
   useEffect(() => {
     setMounted(true)
-  }, [])
+    if (!isInitialized) {
+      fetchCart()
+    }
+  }, [fetchCart, isInitialized])
 
   useEffect(() => {
     if (session?.user) {
@@ -85,7 +88,7 @@ export function Navbar() {
     <nav className="bg-white border-b border-gray-200 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-14">
-          <Link href="/" className="text-base font-semibold text-gray-900 tracking-tight">
+          <Link href={isAdminRoute ? '/admin/orders' : '/'} className="text-base font-semibold text-gray-900 tracking-tight">
             Attire Lab
           </Link>
 
@@ -93,9 +96,9 @@ export function Navbar() {
             {!isAdminRoute && (
               <Link href="/cart" className="relative text-gray-500 hover:text-blue-500 transition-colors">
                 <ShoppingBag className="w-5 h-5" />
-                {mounted && totalItems > 0 && (
+                {mounted && getTotalItems() > 0 && (
                   <span className="absolute -top-1.5 -right-1.5 bg-blue-500 text-white text-[10px] font-bold px-1 py-0.5 rounded-full min-w-[16px] text-center leading-tight">
-                    {totalItems}
+                    {getTotalItems()}
                   </span>
                 )}
               </Link>

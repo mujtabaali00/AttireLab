@@ -20,7 +20,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
       async authorize(credentials) {
         try {
-          const { email, password } = await loginSchema.parseAsync(credentials)
+          const { email, password, rememberMe } = await loginSchema.parseAsync(credentials)
 
           const user = await db.user.findUnique({
             where: { email }
@@ -35,7 +35,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
           if (passwordsMatch) {
             logger.info({ userId: user.id, email: user.email, role: user.role }, 'User authenticated via credentials')
-            return user
+            return { ...user, rememberMe }
           } else {
             logger.warn({ email }, 'Failed login attempt: Password mismatch')
           }
