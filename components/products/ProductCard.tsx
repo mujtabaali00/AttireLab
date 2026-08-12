@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo } from 'react'
 import { Plus, Minus } from 'lucide-react'
 import Image from 'next/image'
 import { useCartStore } from '@/lib/store/cart.store'
@@ -31,20 +31,20 @@ export interface SerializedProduct {
 
 // Colour name → CSS colour value mapping
 const COLOR_CSS: Record<string, string> = {
-  red: '#ef4444',
-  blue: '#3b82f6',
-  green: '#22c55e',
-  yellow: '#eab308',
-  brown: '#92400e',
-  grey: '#9ca3af',
+  red: '#EF4444',
+  blue: '#3B82F6',
+  green: '#22C55E',
+  yellow: '#EAB308',
+  brown: '#92400E',
+  grey: '#9CA3AF',
   black: '#111827',
-  white: '#f9fafb',
-  navy: '#1e3a5f',
-  maroon: '#7f1d1d',
-  pink: '#ec4899',
-  purple: '#a855f7',
-  orange: '#f97316',
-  beige: '#d4b896',
+  white: '#F9FAFB',
+  navy: '#1E3A5F',
+  maroon: '#7F1D1D',
+  pink: '#EC4899',
+  purple: '#A855F7',
+  orange: '#F97316',
+  beige: '#D4B896',
 }
 
 export function ProductCard({ product }: { product: SerializedProduct }) {
@@ -72,7 +72,7 @@ export function ProductCard({ product }: { product: SerializedProduct }) {
     if (!hasSpecs) return null
     return product.specifications!.find(
       s => (s.color === selectedColor || (!s.color && !selectedColor)) &&
-           (s.size === selectedSize || (!s.size && !selectedSize))
+        (s.size === selectedSize || (!s.size && !selectedSize))
     ) || null
   }, [product.specifications, hasSpecs, selectedColor, selectedSize])
 
@@ -89,26 +89,27 @@ export function ProductCard({ product }: { product: SerializedProduct }) {
   // Switch image when colour changes — use spec image if available
   const displayImage = matchingSpec?.imageUrl || product.images[0]?.url
 
-  useEffect(() => {
-    if (qty > maxAllowedQty && maxAllowedQty > 0) {
-      setQty(maxAllowedQty)
-    }
-  }, [maxAllowedQty, qty])
+  const displayedQty = Math.max(1, Math.min(qty, maxAllowedQty || 999))
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
     if (isSelectionOutOfStock || (hasSpecs && !matchingSpec)) return
-    addItem({
-      productId: product.id,
-      name: product.name,
-      price: currentPrice,
-      imageUrl: displayImage ?? '',
-      quantity: qty,
-      maxStock: maxAllowedQty,
-      color: selectedColor || undefined,
-      size: selectedSize || undefined,
-    })
-    setQty(1)
-    toast.success('Added to Cart')
+    try {
+      await addItem({
+        productId: product.id,
+        name: product.name,
+        price: currentPrice,
+        imageUrl: displayImage ?? '',
+        quantity: displayedQty,
+        maxStock: maxAllowedQty,
+        color: selectedColor || undefined,
+        size: selectedSize || undefined,
+      })
+      setQty(1)
+      toast.success('Added to Cart')
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to add item'
+      toast.error(message.includes('Only 0 items left in stock') ? 'This item is out of stock.' : message)
+    }
   }
 
   const isOptionInStock = (type: 'color' | 'size', value: string) => {
@@ -125,9 +126,9 @@ export function ProductCard({ product }: { product: SerializedProduct }) {
   }
 
   return (
-    <div className="bg-white rounded-lg overflow-hidden flex flex-col border border-gray-100 shadow-sm hover:shadow-md transition-shadow duration-200">
+    <div className="w-full bg-white rounded-lg overflow-hidden flex flex-col border border-gray-100 shadow-sm hover:shadow-md transition-shadow duration-200">
       {/* Product Image */}
-      <div className="relative bg-gray-50" style={{ aspectRatio: '3/4' }}>
+      <div className="relative bg-gray-50" style={{ aspectRatio: '6/5' }}>
         {displayImage ? (
           <Image
             src={displayImage}
@@ -149,26 +150,26 @@ export function ProductCard({ product }: { product: SerializedProduct }) {
       </div>
 
       {/* Product Info */}
-      <div className="p-4 flex flex-col gap-2 flex-grow">
+      <div className="p-1.5 flex flex-col gap-[3px] flex-grow">
         {/* Name */}
-        <h3 className="text-sm font-medium text-gray-800 line-clamp-1">
+        <h3 className="text-[11px] font-medium text-gray-800 line-clamp-1">
           {product.name}
         </h3>
 
         {/* Price */}
         <div className="flex items-baseline gap-1">
-          <span className="text-sm text-gray-500">Price:</span>
-          <span className="text-base font-bold text-blue-500">
+          <span className="text-[10px] text-gray-500">Price:</span>
+          <span className="text-[12px] font-bold text-blue-500">
             Rs {currentPrice.toLocaleString()}
           </span>
         </div>
 
         {/* Variants */}
         {hasSpecs && !isTotalOutOfStock && (
-          <div className="space-y-2">
+          <div className="space-y-0.5">
             {/* Color swatches */}
             {allColors.length > 0 && (
-              <div className="flex flex-wrap gap-1.5">
+              <div className="flex flex-wrap gap-0.5">
                 {allColors.map(color => {
                   const inStock = isOptionInStock('color', color)
                   const cssColor = COLOR_CSS[color] || color
@@ -179,11 +180,10 @@ export function ProductCard({ product }: { product: SerializedProduct }) {
                       onClick={() => setSelectedColor(color)}
                       disabled={!inStock}
                       title={color.charAt(0).toUpperCase() + color.slice(1)}
-                      className={`w-5 h-5 rounded-full border-2 transition-all flex-shrink-0 ${
-                        selectedColor === color
+                      className={`w-[15px] h-[15px] rounded-full border-2 transition-all flex-shrink-0 ${selectedColor === color
                           ? isLight ? 'border-gray-500 scale-110' : 'border-blue-500 scale-110'
                           : 'border-transparent hover:border-gray-300'
-                      } ${!inStock ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'}`}
+                        } ${!inStock ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'}`}
                       style={{ backgroundColor: cssColor }}
                     />
                   )
@@ -193,7 +193,7 @@ export function ProductCard({ product }: { product: SerializedProduct }) {
 
             {/* Size buttons */}
             {allSizes.length > 0 && (
-              <div className="flex flex-wrap gap-1">
+              <div className="flex flex-wrap gap-0.5">
                 {allSizes.map(size => {
                   const inStock = isOptionInStock('size', size)
                   return (
@@ -201,11 +201,10 @@ export function ProductCard({ product }: { product: SerializedProduct }) {
                       key={size}
                       onClick={() => setSelectedSize(size)}
                       disabled={!inStock}
-                      className={`min-w-[28px] px-1.5 py-0.5 text-xs font-semibold rounded border uppercase transition-colors ${
-                        selectedSize === size
+                      className={`min-w-[22px] px-1 py-0.5 text-[8px] font-semibold rounded border uppercase transition-colors ${selectedSize === size
                           ? 'bg-gray-900 text-white border-gray-900'
                           : 'bg-white text-gray-600 border-gray-300 hover:border-gray-500'
-                      } ${!inStock ? 'opacity-30 cursor-not-allowed line-through' : ''}`}
+                        } ${!inStock ? 'opacity-30 cursor-not-allowed line-through' : ''}`}
                     >
                       {size}
                     </button>
@@ -217,28 +216,28 @@ export function ProductCard({ product }: { product: SerializedProduct }) {
         )}
 
         {/* Stock count */}
-        <p className="text-xs text-gray-400">
+        <p className="text-[9px] text-gray-400">
           {isTotalOutOfStock ? 'Out of stock' : `${hasSpecs ? (matchingSpec?.quantity ?? 0) : totalStock} in stock`}
         </p>
 
         {/* Qty + Add to Cart */}
-        <div className="flex items-center gap-2 mt-auto pt-1">
+        <div className="flex items-center gap-1 mt-auto pt-0.5">
           {/* Qty stepper */}
           <div className="flex items-center border border-gray-300 rounded overflow-hidden">
             <button
               onClick={() => setQty(q => Math.max(1, q - 1))}
               disabled={isTotalOutOfStock || isSelectionOutOfStock}
-              className="px-2 py-1.5 text-gray-500 hover:bg-gray-100 disabled:opacity-40 transition-colors"
+              className="px-1.5 py-[2px] text-gray-500 hover:bg-gray-100 disabled:opacity-40 transition-colors"
             >
               <Minus className="w-3 h-3" />
             </button>
-            <span className="w-8 text-center text-xs font-semibold text-gray-900 border-x border-gray-300 py-1.5">
-              {String(qty).padStart(2, '0')}
+            <span className="w-7 text-center text-[10px] font-semibold text-gray-900 border-x border-gray-300 py-[2px]">
+              {String(displayedQty).padStart(2, '0')}
             </span>
             <button
               onClick={() => setQty(q => Math.min(maxAllowedQty || 999, q + 1))}
-              disabled={isTotalOutOfStock || isSelectionOutOfStock || qty >= maxAllowedQty}
-              className="px-2 py-1.5 text-gray-500 hover:bg-gray-100 disabled:opacity-40 transition-colors"
+              disabled={isTotalOutOfStock || isSelectionOutOfStock || displayedQty >= maxAllowedQty}
+              className="px-1.5 py-[2px] text-gray-500 hover:bg-gray-100 disabled:opacity-40 transition-colors"
             >
               <Plus className="w-3 h-3" />
             </button>
@@ -248,7 +247,7 @@ export function ProductCard({ product }: { product: SerializedProduct }) {
           <button
             onClick={handleAdd}
             disabled={isTotalOutOfStock || isSelectionOutOfStock || (hasSpecs && !matchingSpec)}
-            className="flex-1 py-1.5 text-white text-xs font-semibold rounded transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed bg-blue-500 hover:bg-blue-600"
+            className="flex-1 py-[2px] text-white text-[10px] font-semibold rounded transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed bg-blue-500 hover:bg-blue-600"
           >
             Add to Cart
           </button>

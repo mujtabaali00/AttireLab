@@ -6,6 +6,7 @@ import { updateProductSchema } from '@/lib/validations/product.schema'
 import { serializeProduct } from '@/lib/product-serializer'
 import { logger } from '@/lib/logger'
 import { ZodError } from 'zod'
+import { ProductStatus } from '@prisma/client'
 
 type RouteContext = { params: Promise<{ id: string }> }
 
@@ -20,6 +21,10 @@ export async function GET(_req: NextRequest, { params }: RouteContext) {
     })
 
     if (!product) {
+      return apiError('Product not found', 404)
+    }
+
+    if (product.status !== ProductStatus.ACTIVE) {
       return apiError('Product not found', 404)
     }
 

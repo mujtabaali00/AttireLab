@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { auth } from '@/auth'
 import { logger } from '@/lib/logger'
+import { ProductStatus } from '@prisma/client'
 
 interface CartItemInput {
   productId: string
@@ -45,7 +46,10 @@ export async function POST(req: Request) {
     // Fetch products to verify stock and price
     const productIds = items.map(i => i.productId)
     const products = await db.product.findMany({
-      where: { id: { in: productIds } },
+      where: {
+        id: { in: productIds },
+        status: ProductStatus.ACTIVE,
+      },
       include: { specifications: true }
     })
 
@@ -56,7 +60,7 @@ export async function POST(req: Request) {
     for (const item of items) {
       const product = products.find(p => p.id === item.productId)
       if (!product) {
-        return NextResponse.json({ error: `Product not found: ${item.productId}` }, { status: 404 })
+        return NextResponse.json({ error: `Product not found or unavailable: ${item.productId}` }, { status: 404 })
       }
 
       // Determine stock and price based on specifications if any match

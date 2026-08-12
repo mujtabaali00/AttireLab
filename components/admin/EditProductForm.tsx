@@ -455,7 +455,7 @@ export function EditProductForm({ productId, initialData }: EditProductFormProps
           <div className="flex items-center justify-between border-b border-gray-100 pb-3">
             <div>
               <h2 className="text-sm font-bold text-gray-900">Product Variants (Optional)</h2>
-              <p className="text-xs text-gray-500 mt-0.5">Add colour/size variants. Leave empty for products with no variants.</p>
+              <p className="text-xs text-gray-500 mt-0.5">Add colour and/or size variants. Leave empty for products with no variants.</p>
             </div>
             <button
               type="button"
@@ -470,6 +470,7 @@ export function EditProductForm({ productId, initialData }: EditProductFormProps
             <div className="text-center py-6 text-sm text-gray-400 bg-gray-50 rounded-lg border border-dashed border-gray-200">
               <p className="font-medium text-gray-500 mb-1">No variants added</p>
               <p className="text-xs">Products without variants use the base price & stock above.</p>
+              <p className="text-xs mt-1">For products like headphones, colour-only variants are fine and size can stay blank.</p>
             </div>
           ) : (
             <div className="space-y-3">

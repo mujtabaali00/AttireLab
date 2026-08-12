@@ -30,7 +30,9 @@ interface CartStore {
 const mapDbCartToState = (dbCart: any): { items: CartItem[], expiresAt: string | null } => {
   if (!dbCart) return { items: [], expiresAt: null }
   
-  const items = dbCart.items.map((item: any) => ({
+  const items = dbCart.items
+    .filter((item: any) => item.product?.status === 'ACTIVE')
+    .map((item: any) => ({
     id: item.id,
     productId: item.productId,
     name: item.product.name,
@@ -88,7 +90,6 @@ export const useCartStore = create<CartStore>((set, get) => ({
       const { items, expiresAt } = mapDbCartToState(data.data)
       set({ items, expiresAt })
     } catch (error: any) {
-      console.error('Cart Error:', error.message)
       throw error
     } finally {
       set({ isLoading: false })
@@ -105,7 +106,6 @@ export const useCartStore = create<CartStore>((set, get) => ({
       const { items, expiresAt } = mapDbCartToState(data.data)
       set({ items, expiresAt })
     } catch (error: any) {
-      console.error('Cart Error:', error.message)
       throw error
     } finally {
       set({ isLoading: false })
@@ -126,7 +126,6 @@ export const useCartStore = create<CartStore>((set, get) => ({
       const { items, expiresAt } = mapDbCartToState(data.data)
       set({ items, expiresAt })
     } catch (error: any) {
-      console.error('Cart Error:', error.message)
       throw error
     } finally {
       set({ isLoading: false })
@@ -143,7 +142,6 @@ export const useCartStore = create<CartStore>((set, get) => ({
       const { items, expiresAt } = mapDbCartToState(data.data)
       set({ items, expiresAt })
     } catch (error: any) {
-      console.error('Cart Error:', error.message)
       throw error
     } finally {
       set({ isLoading: false })
