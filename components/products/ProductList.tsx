@@ -48,53 +48,39 @@ export function ProductList({ initialProducts, categories }: ProductListProps) {
   }, [initialProducts, search, selectedCategory, sortBy])
 
   return (
-    <div>
+    <div className="px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-10">
       {/* Header Row */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-        <h2 className="text-xl font-bold text-gray-900 hidden sm:block">Our Products</h2>
+      <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between mb-8">
+        <div>
+          <h2 className="text-3xl font-bold text-blue-600">Our Products</h2>
+          <p className="mt-2 text-sm text-gray-500">Search products, filter inventory, and find the latest items.</p>
+        </div>
 
-        <div className="flex items-center gap-3 flex-wrap sm:flex-nowrap w-full sm:w-auto">
-          {/* Category Dropdown */}
-          <div className="relative shrink-0">
-            <select
-              value={selectedCategory}
-              onChange={e => setSelectedCategory(e.target.value)}
-              className="appearance-none border border-gray-200 rounded-lg pl-4 pr-10 h-11 text-sm font-medium text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 cursor-pointer w-full sm:w-auto"
-            >
-              <option value="all">All Categories</option>
-              {categories.map(cat => (
-                <option key={cat.id} value={cat.id}>{cat.name}</option>
-              ))}
-            </select>
-            <ChevronDown className="w-4 h-4 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-          </div>
-
-          {/* Search */}
-          <div className="flex h-11 w-full sm:w-auto flex-1 sm:flex-none">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end w-full sm:w-auto">
+          <div className="relative w-full sm:w-[360px]">
             <input
               type="text"
-              placeholder="Search products..."
+              placeholder="Search products or categories..."
               value={search}
               onChange={e => setSearch(e.target.value)}
-              className="pl-4 pr-4 border border-r-0 border-gray-200 rounded-l-lg text-sm text-gray-700 bg-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 w-full sm:w-56"
+              className="w-full rounded-2xl border border-gray-200 bg-slate-50 py-3 pl-4 pr-12 text-sm text-gray-700 outline-none transition focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-200"
             />
-            <div className="w-11 shrink-0 bg-blue-500 rounded-r-lg flex items-center justify-center cursor-pointer transition-colors hover:bg-blue-600 shadow-sm">
-              <Search className="w-4 h-4 text-white" />
-            </div>
+            <button type="button" className="absolute right-2 top-1/2 -translate-y-1/2 inline-flex h-9 w-9 items-center justify-center rounded-full bg-blue-600 text-white shadow-sm hover:bg-blue-700 transition">
+              <Search className="w-4 h-4" />
+            </button>
           </div>
 
-          {/* Sort dropdown */}
-          <div className="relative shrink-0">
+          <div className="relative w-full sm:w-44">
             <select
               value={sortBy}
               onChange={e => setSortBy(e.target.value)}
-              className="appearance-none border border-gray-200 rounded-lg pl-4 pr-10 h-11 text-sm font-medium text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 cursor-pointer w-full sm:w-auto"
+              className="w-full appearance-none rounded-2xl border border-gray-200 bg-white py-3 pl-4 pr-10 text-sm font-medium text-gray-700 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-200"
             >
               {SORT_OPTIONS.map(o => (
                 <option key={o.value} value={o.value}>{o.label}</option>
               ))}
             </select>
-            <ChevronDown className="w-4 h-4 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
           </div>
         </div>
       </div>
@@ -105,7 +91,7 @@ export function ProductList({ initialProducts, categories }: ProductListProps) {
           <p className="text-sm">No products found.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(240px,280px))] justify-center gap-6">
           {filtered.map(product => (
             <ProductCard key={product.id} product={product} />
           ))}

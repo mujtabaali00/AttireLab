@@ -479,7 +479,7 @@ export default function NewProductPage() {
             <div>
               <h2 className="text-sm font-bold text-gray-900">Product Variants (Optional)</h2>
               <p className="text-xs text-gray-500 mt-0.5">
-                Add color/size variants. Leave empty for products with no variants (e.g. perfume).
+                Add colour and/or size variants. Leave empty for products with no variants (e.g. perfume).
               </p>
             </div>
             <button
@@ -495,7 +495,7 @@ export default function NewProductPage() {
             <div className="text-center py-6 text-sm text-gray-400 bg-gray-50 rounded-lg border border-dashed border-gray-200">
               <p className="font-medium text-gray-500 mb-1">No variants added</p>
               <p className="text-xs">Products without variants (e.g. perfumes, accessories) use the base price & stock above.</p>
-              <p className="text-xs mt-1">For clothing, add variants with colour and/or size.</p>
+              <p className="text-xs mt-1">For products like headphones, you can add colour-only variants and leave size blank.</p>
             </div>
           ) : (
             <div className="space-y-3">

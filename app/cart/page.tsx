@@ -77,6 +77,21 @@ export default function CartPage() {
     if (itemToDelete) { removeItem(itemToDelete); setItemToDelete(null) }
   }
 
+  const formatCartError = (error: unknown) => {
+    const message = error instanceof Error ? error.message : 'Failed to update quantity'
+    return message.includes('Only 0 items left in stock')
+      ? 'This item is out of stock.'
+      : message
+  }
+
+  const handleQuantityChange = async (itemId: string, quantity: number) => {
+    try {
+      await updateQuantity(itemId, quantity)
+    } catch (error) {
+      toast.error(formatCartError(error))
+    }
+  }
+
   const handlePlaceOrderClick = () => {
     if (!session) {
       // Not logged in — redirect to login with callbackUrl=/cart
@@ -223,13 +238,13 @@ export default function CartPage() {
                     </td>
                     <td className="py-4">
                       <div className="flex items-center justify-center border border-gray-200 rounded-lg w-fit mx-auto bg-white">
-                        <button onClick={() => updateQuantity(item.id, item.quantity - 1)} className="p-1.5 text-blue-500 hover:bg-blue-50 rounded-l-lg transition-colors">
+                        <button onClick={() => handleQuantityChange(item.id, item.quantity - 1)} className="p-1.5 text-blue-500 hover:bg-blue-50 rounded-l-lg transition-colors">
                           <Minus className="w-3 h-3" />
                         </button>
                         <span className="w-7 text-center text-xs font-semibold text-gray-900">
                           {String(item.quantity).padStart(2, '0')}
                         </span>
-                        <button onClick={() => updateQuantity(item.id, item.quantity + 1)} className="p-1.5 text-blue-500 hover:bg-blue-50 rounded-r-lg transition-colors">
+                        <button onClick={() => handleQuantityChange(item.id, item.quantity + 1)} className="p-1.5 text-blue-500 hover:bg-blue-50 rounded-r-lg transition-colors">
                           <Plus className="w-3 h-3" />
                         </button>
                       </div>
