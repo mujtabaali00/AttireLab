@@ -166,13 +166,5 @@ export async function getCart() {
     }
   }
 
-  // Extend cart expiration on each access
-  if (cart) {
-    await db.cart.update({
-      where: { id: cart.id },
-      data: { expiresAt: new Date(Date.now() + APP_CONSTANTS.CART.EXPIRATION_HOURS * 60 * 60 * 1000) },
-    })
-  }
-
   return cart
 }

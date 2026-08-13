@@ -124,7 +124,7 @@ export default function RegisterPage() {
             d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
           />
         </svg>
-        {isGoogleLoading ? 'Connecting to Google...' : 'Sign Up with Google'}
+        {isGoogleLoading ? 'Connecting to Google...' : 'Sign in with Google'}
       </button>
 
       <div className="relative flex py-1 items-center">
@@ -136,9 +136,9 @@ export default function RegisterPage() {
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <div className="space-y-1">
           <Label htmlFor="name">Fullname</Label>
-          <Input 
-            id="name" 
-            placeholder="Fullname" 
+          <Input
+            id="name"
+            placeholder="Fullname"
             {...register("name")}
           />
           {errors.name && (
@@ -148,10 +148,10 @@ export default function RegisterPage() {
 
         <div className="space-y-1">
           <Label htmlFor="email">Email address</Label>
-          <Input 
-            id="email" 
-            placeholder="email address" 
-            type="email" 
+          <Input
+            id="email"
+            placeholder="email address"
+            type="email"
             autoCapitalize="none"
             autoComplete="email"
             autoCorrect="off"
@@ -161,13 +161,13 @@ export default function RegisterPage() {
             <p className="text-xs text-red-500">{errors.email.message}</p>
           )}
         </div>
-        
+
         <div className="space-y-1">
           <Label htmlFor="password">Password</Label>
-          <Input 
-            id="password" 
-            placeholder="Password" 
-            type="password" 
+          <Input
+            id="password"
+            placeholder="Password"
+            type="password"
             {...register("password")}
           />
           {errors.password && (
@@ -177,10 +177,10 @@ export default function RegisterPage() {
 
         <div className="space-y-1">
           <Label htmlFor="confirmPassword">Confirm Password</Label>
-          <Input 
-            id="confirmPassword" 
-            placeholder="Password" 
-            type="password" 
+          <Input
+            id="confirmPassword"
+            placeholder="Password"
+            type="password"
             {...register("confirmPassword")}
           />
           {errors.confirmPassword && (

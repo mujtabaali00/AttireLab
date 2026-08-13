@@ -152,7 +152,7 @@ export default function CartPage() {
   }
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 relative">
+    <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8 relative">
       {/* Success Toast */}
       {toastMessage && (
         <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 bg-green-100 text-green-800 px-4 py-2.5 rounded-lg shadow-md flex items-center gap-3 text-sm font-medium max-w-[90vw]">
@@ -165,9 +165,9 @@ export default function CartPage() {
 
       <div className="p-4 sm:p-6 lg:p-8">
         {/* Title & Timer */}
-        <div className="mb-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <Link href="/" className="inline-flex items-center text-blue-500 hover:text-blue-600 font-semibold text-lg w-fit">
-            <ArrowLeft className="w-4 h-4 mr-1.5" /> Your Shopping Bag
+      <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <Link href="/" className="inline-flex items-center text-blue-500 hover:text-blue-600 font-medium text-[28px] tracking-tight transition-colors">
+            <span className="mr-3 font-normal">&larr;</span> Shopping Bag
           </Link>
           
           <div className="flex items-center gap-4">

@@ -64,8 +64,23 @@ export function ProductCard({ product }: { product: SerializedProduct }) {
     return Array.from(sizes)
   }, [product.specifications, hasSpecs])
 
-  const [selectedColor, setSelectedColor] = useState<string | null>(allColors[0] || null)
-  const [selectedSize, setSelectedSize] = useState<string | null>(allSizes[0] || null)
+  const [selectedColor, setSelectedColor] = useState<string | null>(() => {
+    if (!product.specifications || product.specifications.length === 0) return null
+    // Pick the first color that has stock
+    const colors = Array.from(new Set(product.specifications.map(s => s.color).filter(Boolean) as string[]))
+    const firstInStock = colors.find(c =>
+      product.specifications!.some(s => s.color === c && s.quantity > 0)
+    )
+    return firstInStock || colors[0] || null
+  })
+  const [selectedSize, setSelectedSize] = useState<string | null>(() => {
+    if (!product.specifications || product.specifications.length === 0) return null
+    const sizes = Array.from(new Set(product.specifications.map(s => s.size).filter(Boolean) as string[]))
+    const firstInStock = sizes.find(sz =>
+      product.specifications!.some(s => s.size === sz && s.quantity > 0)
+    )
+    return firstInStock || sizes[0] || null
+  })
 
   const matchingSpec = useMemo(() => {
     if (!hasSpecs) return null
@@ -172,18 +187,27 @@ export function ProductCard({ product }: { product: SerializedProduct }) {
               return (
                 <button
                   key={color}
-                  onClick={() => setSelectedColor(color)}
+                  onClick={() => inStock && setSelectedColor(color)}
                   disabled={!inStock}
-                  title={color.charAt(0).toUpperCase() + color.slice(1)}
-                  style={{ backgroundColor: cssColor }}
-                  className={`w-5 h-5 rounded-full flex-shrink-0 transition-all ${
+                  title={`${color.charAt(0).toUpperCase() + color.slice(1)}${!inStock ? ' (Out of stock)' : ''}`}
+                  className={`relative w-5 h-5 rounded-full flex-shrink-0 transition-all overflow-hidden ${
                     selectedColor === color
                       ? isLight
                         ? 'ring-2 ring-offset-1 ring-gray-500'
                         : 'ring-2 ring-offset-1 ring-blue-500'
                       : 'ring-1 ring-gray-300'
-                  } ${!inStock ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer hover:ring-2 hover:ring-blue-400'}`}
-                />
+                  } ${!inStock ? 'cursor-not-allowed' : 'cursor-pointer hover:ring-2 hover:ring-blue-400'}`}
+                  style={{ backgroundColor: cssColor }}
+                >
+                  {!inStock && (
+                    <span
+                      className="absolute inset-0 flex items-center justify-center"
+                      style={{
+                        background: 'linear-gradient(to top right, transparent calc(50% - 0.5px), #EF4444 calc(50% - 0.5px), #EF4444 calc(50% + 0.5px), transparent calc(50% + 0.5px))'
+                      }}
+                    />
+                  )}
+                </button>
               )
             })}
           </div>

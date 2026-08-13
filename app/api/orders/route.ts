@@ -83,10 +83,8 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: `Product not found or unavailable: ${item.productId}` }, { status: 404 })
       }
 
-      // Determine stock and price based on specifications if any match
-      let availableStock = product.quantity
+      // Determine price based on specifications — stock already reserved in cart
       let itemPrice = Number(product.price)
-      let specId: string | undefined = undefined
 
       if (item.color || item.size) {
         const spec = product.specifications.find(
@@ -94,14 +92,8 @@ export async function POST(req: Request) {
                (s.size === item.size || (!s.size && !item.size))
         )
         if (spec) {
-          availableStock = spec.quantity
           itemPrice = spec.price ? Number(spec.price) : itemPrice
-          specId = spec.id
         }
-      }
-
-      if (availableStock < item.quantity) {
-        return NextResponse.json({ error: `Insufficient stock for ${product.name} ${item.color || ''} ${item.size || ''}` }, { status: 409 })
       }
 
       subtotal += itemPrice * item.quantity
