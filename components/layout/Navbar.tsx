@@ -72,7 +72,7 @@ export function Navbar() {
       const res = await fetch('/api/notifications')
       const data = await res.json()
       if (data.data) setNotifications(data.data)
-    } catch {}
+    } catch { }
   }
 
   useEffect(() => {
@@ -113,29 +113,127 @@ export function Navbar() {
       } else {
         setNotifications(prev => prev.map(n => ({ ...n, read: true })))
       }
-    } catch {}
+    } catch { }
   }
 
+  // ── Admin navbar (no cart, user avatar top-right) ──
+  if (isAdminRoute) {
+    return (
+      <nav className="bg-white border-b border-gray-200 h-14 flex items-center px-6 sticky top-0 z-40">
+        {/* Left: logo — kept in sync with sidebar */}
+        <Link href="/admin/products" className="text-sm font-bold text-gray-900 tracking-tight">
+          AttireLab
+        </Link>
+
+        <div className="ml-auto flex items-center gap-4">
+          {/* Bell */}
+          {session && (
+            <div className="relative" ref={notifRef}>
+              <button
+                onClick={() => setNotifOpen(!notifOpen)}
+                className="relative text-gray-400 hover:text-blue-500 transition-colors p-1"
+              >
+                <Bell className="w-5 h-5" />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center px-0.5 border border-white">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
+              </button>
+
+              {notifOpen && (
+                <div className="absolute right-0 top-full mt-2 w-[340px] bg-white rounded-xl border border-gray-200 shadow-xl overflow-hidden z-50">
+                  <div className="flex items-center justify-between px-4 pt-4 pb-2">
+                    <h3 className="text-base font-bold text-gray-900">Notifications</h3>
+                    {unreadCount > 0 && (
+                      <button onClick={() => handleMarkAsRead()} className="text-xs text-blue-500 hover:text-blue-600 font-semibold">
+                        Mark all as read
+                      </button>
+                    )}
+                  </div>
+                  <div className="flex border-b border-gray-100 px-4">
+                    <button onClick={() => setNotifTab('unread')} className={`pb-2 mr-6 text-sm font-medium border-b-2 transition-colors ${notifTab === 'unread' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-400 hover:text-gray-600'}`}>
+                      Unread{unreadCount > 0 && <span className="ml-1 text-xs bg-blue-100 text-blue-600 rounded-full px-1.5 py-0.5">{unreadCount}</span>}
+                    </button>
+                    <button onClick={() => setNotifTab('all')} className={`pb-2 text-sm font-medium border-b-2 transition-colors ${notifTab === 'all' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-400 hover:text-gray-600'}`}>
+                      All
+                    </button>
+                  </div>
+                  <div className="max-h-[60vh] overflow-y-auto divide-y divide-gray-50">
+                    {displayedNotifs.length === 0 ? (
+                      <div className="p-8 text-center"><Bell className="w-8 h-8 text-gray-200 mx-auto mb-2" /><p className="text-sm text-gray-400">{notifTab === 'unread' ? 'All caught up!' : 'No notifications yet'}</p></div>
+                    ) : displayedNotifs.map(notif => (
+                      <div key={notif.id} onClick={() => { if (!notif.read) handleMarkAsRead(notif.id) }} className={`px-4 py-3 cursor-pointer transition-colors hover:bg-gray-50 flex items-start gap-3 ${!notif.read ? 'bg-blue-50/40' : ''}`}>
+                        <NotifIcon type={notif.type} />
+                        <div className="flex-1 min-w-0">
+                          <p className={`text-sm leading-snug ${!notif.read ? 'text-gray-900 font-semibold' : 'text-gray-600'}`}>{notif.message}</p>
+                          <p className="text-xs text-gray-400 mt-0.5">{formatDistanceToNow(new Date(notif.createdAt), { addSuffix: true })}</p>
+                        </div>
+                        {!notif.read && <span className="w-2 h-2 bg-blue-500 rounded-full shrink-0 mt-1.5" />}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Admin user avatar + name */}
+          {session && (
+            <div className="relative" ref={menuRef}>
+              <button
+                onClick={() => setMenuOpen(v => !v)}
+                className="flex items-center gap-2 hover:bg-gray-50 px-2 py-1 rounded-lg transition-colors"
+              >
+                <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white text-xs font-bold shrink-0">
+                  {session.user?.name?.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() || 'AU'}
+                </div>
+                <span className="text-sm font-medium text-gray-700 hidden sm:inline">{session.user?.name}</span>
+                <ChevronDown className="w-4 h-4 text-gray-400" />
+              </button>
+
+              {menuOpen && (
+                <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-xl border border-gray-100 shadow-lg py-2 z-50">
+                  <div className="px-4 py-2 border-b border-gray-50 mb-1">
+                    <p className="text-sm font-medium text-gray-900 truncate">{session.user?.name}</p>
+                    <p className="text-xs text-gray-500 truncate">{session.user?.email}</p>
+                  </div>
+                  <button
+                    onClick={() => { setMenuOpen(false); signOut({ callbackUrl: '/auth/login' }) }}
+                    className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-500 font-medium hover:bg-red-50 transition-colors"
+                  >
+                    <LogOut className="w-4 h-4" /> Logout
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </nav>
+    )
+  }
+
+  // ── User navbar ──
   return (
     <nav className="bg-white border-b border-gray-200 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-14">
-          <Link href={isAdminRoute ? '/admin/orders' : '/'} className="text-base font-semibold text-gray-900 tracking-tight">
-            Attire Lab
+          <Link href="/" className="text-base font-bold text-blue-600 tracking-tight">
+            Attirelab
           </Link>
 
-          <div className="flex items-center space-x-4">
-            {!isAdminRoute && (
-              <Link href="/cart" className="relative text-gray-500 hover:text-blue-500 transition-colors">
-                <ShoppingBag className="w-5 h-5" />
-                {mounted && getTotalItems() > 0 && (
-                  <span className="absolute -top-1.5 -right-1.5 bg-blue-500 text-white text-[10px] font-bold px-1 py-0.5 rounded-full min-w-[16px] text-center leading-tight">
-                    {getTotalItems()}
-                  </span>
-                )}
-              </Link>
-            )}
+          <div className="flex items-center gap-4">
+            {/* Cart */}
+            <Link href="/cart" className="relative text-gray-500 hover:text-blue-500 transition-colors">
+              <ShoppingBag className="w-5 h-5" />
+              {mounted && getTotalItems() > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 bg-blue-500 text-white text-[10px] font-bold px-1 py-0.5 rounded-full min-w-[16px] text-center leading-tight">
+                  {getTotalItems()}
+                </span>
+              )}
+            </Link>
 
+            {/* Bell */}
             {session && (
               <div className="relative" ref={notifRef}>
                 <button
@@ -152,98 +250,53 @@ export function Navbar() {
 
                 {notifOpen && (
                   <div className="absolute right-0 top-full mt-2 w-[340px] bg-white rounded-xl border border-gray-100 shadow-xl overflow-hidden z-50">
-                    {/* Header */}
                     <div className="flex items-center justify-between px-4 pt-4 pb-2">
                       <h3 className="text-base font-bold text-gray-900">Notifications</h3>
                       {unreadCount > 0 && (
-                        <button
-                          onClick={() => handleMarkAsRead()}
-                          className="text-xs text-blue-500 hover:text-blue-600 font-semibold"
-                        >
+                        <button onClick={() => handleMarkAsRead()} className="text-xs text-blue-500 hover:text-blue-600 font-semibold">
                           Mark all as read
                         </button>
                       )}
                     </div>
-
-                    {/* Tabs */}
                     <div className="flex border-b border-gray-100 px-4">
-                      <button
-                        onClick={() => setNotifTab('unread')}
-                        className={`pb-2 mr-6 text-sm font-medium border-b-2 transition-colors ${
-                          notifTab === 'unread'
-                            ? 'border-blue-500 text-blue-600'
-                            : 'border-transparent text-gray-400 hover:text-gray-600'
-                        }`}
-                      >
-                        Unread{' '}
-                        {unreadCount > 0 && (
-                          <span className="ml-1 text-xs bg-blue-100 text-blue-600 rounded-full px-1.5 py-0.5">
-                            {unreadCount}
-                          </span>
-                        )}
+                      <button onClick={() => setNotifTab('unread')} className={`pb-2 mr-6 text-sm font-medium border-b-2 transition-colors ${notifTab === 'unread' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-400 hover:text-gray-600'}`}>
+                        Unread{unreadCount > 0 && <span className="ml-1 text-xs bg-blue-100 text-blue-600 rounded-full px-1.5 py-0.5">{unreadCount}</span>}
                       </button>
-                      <button
-                        onClick={() => setNotifTab('all')}
-                        className={`pb-2 text-sm font-medium border-b-2 transition-colors ${
-                          notifTab === 'all'
-                            ? 'border-blue-500 text-blue-600'
-                            : 'border-transparent text-gray-400 hover:text-gray-600'
-                        }`}
-                      >
+                      <button onClick={() => setNotifTab('all')} className={`pb-2 text-sm font-medium border-b-2 transition-colors ${notifTab === 'all' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-400 hover:text-gray-600'}`}>
                         All
                       </button>
                     </div>
-
-                    {/* List */}
-                    <div className="max-h-72 overflow-y-auto divide-y divide-gray-50">
+                    <div className="max-h-[60vh] overflow-y-auto divide-y divide-gray-50">
                       {displayedNotifs.length === 0 ? (
-                        <div className="p-8 text-center">
-                          <Bell className="w-8 h-8 text-gray-200 mx-auto mb-2" />
-                          <p className="text-sm text-gray-400">
-                            {notifTab === 'unread' ? 'All caught up!' : 'No notifications yet'}
-                          </p>
-                        </div>
-                      ) : (
-                        displayedNotifs.map(notif => (
-                          <div
-                            key={notif.id}
-                            onClick={() => { if (!notif.read) handleMarkAsRead(notif.id) }}
-                            className={`px-4 py-3 cursor-pointer transition-colors hover:bg-gray-50 flex items-start gap-3 ${
-                              !notif.read ? 'bg-blue-50/40' : ''
-                            }`}
-                          >
-                            <NotifIcon type={notif.type} />
-                            <div className="flex-1 min-w-0">
-                              <p className={`text-sm leading-snug ${!notif.read ? 'text-gray-900 font-semibold' : 'text-gray-600'}`}>
-                                {notif.message}
-                              </p>
-                              <p className="text-xs text-gray-400 mt-0.5">
-                                {formatDistanceToNow(new Date(notif.createdAt), { addSuffix: true })}
-                              </p>
-                            </div>
-                            {!notif.read && (
-                              <span className="w-2 h-2 bg-blue-500 rounded-full shrink-0 mt-1.5" />
-                            )}
+                        <div className="p-8 text-center"><Bell className="w-8 h-8 text-gray-200 mx-auto mb-2" /><p className="text-sm text-gray-400">{notifTab === 'unread' ? 'All caught up!' : 'No notifications yet'}</p></div>
+                      ) : displayedNotifs.map(notif => (
+                        <div key={notif.id} onClick={() => { if (!notif.read) handleMarkAsRead(notif.id) }} className={`px-4 py-3 cursor-pointer transition-colors hover:bg-gray-50 flex items-start gap-3 ${!notif.read ? 'bg-blue-50/40' : ''}`}>
+                          <NotifIcon type={notif.type} />
+                          <div className="flex-1 min-w-0">
+                            <p className={`text-sm leading-snug ${!notif.read ? 'text-gray-900 font-semibold' : 'text-gray-600'}`}>{notif.message}</p>
+                            <p className="text-xs text-gray-400 mt-0.5">{formatDistanceToNow(new Date(notif.createdAt), { addSuffix: true })}</p>
                           </div>
-                        ))
-                      )}
+                          {!notif.read && <span className="w-2 h-2 bg-blue-500 rounded-full shrink-0 mt-1.5" />}
+                        </div>
+                      ))}
                     </div>
                   </div>
                 )}
               </div>
             )}
 
+            {/* Login / User menu */}
             {session ? (
               <div className="relative" ref={menuRef}>
                 <button
                   onClick={() => setMenuOpen(v => !v)}
                   className="flex items-center gap-2 hover:bg-gray-50 p-1 rounded-md transition-colors"
                 >
-                  <div className="w-6 h-6 rounded-full bg-gray-200 overflow-hidden relative border border-gray-300">
+                  <div className="w-7 h-7 rounded-full bg-gray-200 overflow-hidden relative border border-gray-300">
                     {session.user?.image ? (
                       <Image src={session.user.image} alt={session.user.name || 'User'} fill className="object-cover" />
                     ) : (
-                      <span className="absolute inset-0 flex items-center justify-center text-[10px] font-medium text-gray-500 uppercase">
+                      <span className="absolute inset-0 flex items-center justify-center text-[10px] font-medium text-gray-600 uppercase">
                         {session.user?.name?.[0] || 'U'}
                       </span>
                     )}
@@ -258,33 +311,25 @@ export function Navbar() {
                       <p className="text-sm font-medium text-gray-900 truncate">{session.user?.name}</p>
                       <p className="text-xs text-gray-500 truncate">{session.user?.email}</p>
                     </div>
-                    {session.user?.role === 'ADMIN' && !isAdminRoute && (
-                      <Link
-                        href="/admin/products"
-                        onClick={() => setMenuOpen(false)}
-                        className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-blue-600 transition-colors"
-                      >
+                    {session.user?.role === 'ADMIN' && (
+                      <Link href="/admin/products" onClick={() => setMenuOpen(false)} className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-blue-600 transition-colors">
                         Admin Panel
                       </Link>
                     )}
-                    <Link
-                      href="/orders"
-                      onClick={() => setMenuOpen(false)}
-                      className="flex items-center gap-2 px-4 py-2 text-sm text-blue-500 font-medium hover:bg-blue-50 transition-colors"
-                    >
+                    <Link href="/orders" onClick={() => setMenuOpen(false)} className="flex items-center gap-2 px-4 py-2 text-sm text-blue-500 font-medium hover:bg-blue-50 transition-colors">
                       <Package className="w-4 h-4" /> My Orders
                     </Link>
-                    <button
-                      onClick={() => { setMenuOpen(false); signOut({ callbackUrl: '/auth/login' }) }}
-                      className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-500 font-medium hover:bg-red-50 transition-colors"
-                    >
+                    <button onClick={() => { setMenuOpen(false); signOut({ callbackUrl: '/auth/login' }) }} className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-500 font-medium hover:bg-red-50 transition-colors">
                       <LogOut className="w-4 h-4" /> Logout
                     </button>
                   </div>
                 )}
               </div>
             ) : (
-              <Link href="/auth/login" className="text-sm font-medium text-blue-500 hover:text-blue-600 transition-colors">
+              <Link
+                href="/auth/login"
+                className="text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 px-4 py-1.5 rounded-md transition-colors"
+              >
                 Login
               </Link>
             )}

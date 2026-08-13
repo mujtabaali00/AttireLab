@@ -7,7 +7,7 @@ export const APP_CONSTANTS = {
   
   // Cart Configuration
   CART: {
-    EXPIRATION_HOURS: 1,
+    EXPIRATION_HOURS: 0.5,
     GUEST_COOKIE_NAME: 'attirelab_guest_cart',
   },
   

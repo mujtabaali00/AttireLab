@@ -35,7 +35,7 @@ const statusMap: Record<DBOrderStatus, { label: string, color: string }> = {
 
 export function OrdersTable({ orders, isAdmin = false }: OrdersTableProps) {
   const [updatingId, setUpdatingId] = useState<string | null>(null)
-  
+
   // Pagination (simple client side for now)
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 10
@@ -63,8 +63,8 @@ export function OrdersTable({ orders, isAdmin = false }: OrdersTableProps) {
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-100 flex flex-col min-h-[60vh]">
-      
+    <div className={`bg-white flex flex-col min-h-[60vh] ${isAdmin ? 'rounded-lg shadow-sm border border-gray-100' : ''}`}>
+
       {/* Table */}
       <div className="overflow-x-auto flex-grow">
         <table className="w-full text-left border-collapse">
@@ -134,7 +134,7 @@ export function OrdersTable({ orders, isAdmin = false }: OrdersTableProps) {
                 </tr>
               )
             })}
-            
+
             {paginatedOrders.length === 0 && (
               <tr>
                 <td colSpan={isAdmin ? 7 : 6} className="px-5 py-8 text-center text-sm text-gray-500">
@@ -151,7 +151,7 @@ export function OrdersTable({ orders, isAdmin = false }: OrdersTableProps) {
         <span className="text-sm text-gray-500">
           {orders.length} Total Count
         </span>
-        
+
         {orders.length > 0 && (
           <div className="flex items-center border border-gray-200 rounded divide-x divide-gray-200">
             <button
@@ -161,18 +161,17 @@ export function OrdersTable({ orders, isAdmin = false }: OrdersTableProps) {
             >
               Previous
             </button>
-            
+
             {Array.from({ length: totalPages }).map((_, i) => {
               const page = i + 1
               return (
                 <button
                   key={page}
                   onClick={() => setCurrentPage(page)}
-                  className={`px-3 py-1.5 text-sm transition-colors ${
-                    currentPage === page 
-                      ? 'bg-blue-50 text-blue-600 font-medium' 
+                  className={`px-3 py-1.5 text-sm transition-colors ${currentPage === page
+                      ? 'bg-blue-50 text-blue-600 font-medium'
                       : 'text-blue-500 hover:bg-gray-50'
-                  }`}
+                    }`}
                 >
                   {page}
                 </button>

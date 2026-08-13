@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { Plus, Minus } from 'lucide-react'
 import Image from 'next/image'
 import { useCartStore } from '@/lib/store/cart.store'
 import { toast } from 'react-hot-toast'
@@ -21,7 +20,7 @@ export interface SerializedProduct {
   description: string | null
   price: number
   quantity: number
-  categoryId: string
+  categoryId: string | null
   categoryName?: string | null
   createdAt: string
   updatedAt: string
@@ -86,9 +85,7 @@ export function ProductCard({ product }: { product: SerializedProduct }) {
   const maxAllowedQty = hasSpecs ? (matchingSpec?.quantity || 0) : product.quantity
   const isSelectionOutOfStock = hasSpecs && maxAllowedQty === 0
 
-  // Switch image when colour changes — use spec image if available
   const displayImage = matchingSpec?.imageUrl || product.images[0]?.url
-
   const displayedQty = Math.max(1, Math.min(qty, maxAllowedQty || 999))
 
   const handleAdd = async () => {
@@ -100,12 +97,11 @@ export function ProductCard({ product }: { product: SerializedProduct }) {
         price: currentPrice,
         imageUrl: displayImage ?? '',
         quantity: displayedQty,
-        maxStock: maxAllowedQty,
         color: selectedColor || undefined,
         size: selectedSize || undefined,
       })
       setQty(1)
-      toast.success('Added to Cart')
+      toast.success('Added to cart!')
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to add item'
       toast.error(message.includes('Only 0 items left in stock') ? 'This item is out of stock.' : message)
@@ -125,17 +121,19 @@ export function ProductCard({ product }: { product: SerializedProduct }) {
     }
   }
 
+  const stockCount = hasSpecs ? (matchingSpec?.quantity ?? 0) : product.quantity
+
   return (
-    <div className="w-full bg-white rounded-lg overflow-hidden flex flex-col border border-gray-100 shadow-sm hover:shadow-md transition-shadow duration-200">
-      {/* Product Image */}
-      <div className="relative bg-gray-50" style={{ aspectRatio: '6/5' }}>
+    <div className="w-full bg-white rounded-lg overflow-hidden flex flex-col border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-200">
+      {/* Product Image — tall square */}
+      <div className="relative bg-gray-100" style={{ aspectRatio: '1 / 1' }}>
         {displayImage ? (
           <Image
             src={displayImage}
             alt={product.name}
             fill
             className="object-cover transition-opacity duration-300"
-            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-gray-300 text-xs">
@@ -143,103 +141,102 @@ export function ProductCard({ product }: { product: SerializedProduct }) {
           </div>
         )}
         {isTotalOutOfStock && (
-          <div className="absolute inset-0 bg-white/70 flex items-center justify-center">
+          <div className="absolute inset-0 bg-white/75 flex items-center justify-center">
             <span className="text-sm font-semibold text-red-500">Out of Stock</span>
           </div>
         )}
       </div>
 
-      {/* Product Info */}
-      <div className="p-1.5 flex flex-col gap-[3px] flex-grow">
+      {/* Card body */}
+      <div className="p-3 flex flex-col gap-2 flex-grow">
         {/* Name */}
-        <h3 className="text-[11px] font-medium text-gray-800 line-clamp-1">
+        <h3 className="text-sm font-medium text-gray-800 line-clamp-1">
           {product.name}
         </h3>
 
         {/* Price */}
         <div className="flex items-baseline gap-1">
-          <span className="text-[10px] text-gray-500">Price:</span>
-          <span className="text-[12px] font-bold text-blue-500">
-            Rs {currentPrice.toLocaleString()}
+          <span className="text-sm text-gray-600">Price:</span>
+          <span className="text-sm font-bold text-blue-600">
+            Rs. {currentPrice.toLocaleString()}
           </span>
         </div>
 
-        {/* Variants */}
-        {hasSpecs && !isTotalOutOfStock && (
-          <div className="space-y-0.5">
-            {/* Color swatches */}
-            {allColors.length > 0 && (
-              <div className="flex flex-wrap gap-0.5">
-                {allColors.map(color => {
-                  const inStock = isOptionInStock('color', color)
-                  const cssColor = COLOR_CSS[color] || color
-                  const isLight = ['white', 'beige', 'yellow'].includes(color)
-                  return (
-                    <button
-                      key={color}
-                      onClick={() => setSelectedColor(color)}
-                      disabled={!inStock}
-                      title={color.charAt(0).toUpperCase() + color.slice(1)}
-                      className={`w-[15px] h-[15px] rounded-full border-2 transition-all flex-shrink-0 ${selectedColor === color
-                          ? isLight ? 'border-gray-500 scale-110' : 'border-blue-500 scale-110'
-                          : 'border-transparent hover:border-gray-300'
-                        } ${!inStock ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'}`}
-                      style={{ backgroundColor: cssColor }}
-                    />
-                  )
-                })}
-              </div>
-            )}
+        {/* Color swatches */}
+        {allColors.length > 0 && !isTotalOutOfStock && (
+          <div className="flex flex-wrap gap-1.5">
+            {allColors.map(color => {
+              const inStock = isOptionInStock('color', color)
+              const cssColor = COLOR_CSS[color] || color
+              const isLight = ['white', 'beige', 'yellow'].includes(color)
+              return (
+                <button
+                  key={color}
+                  onClick={() => setSelectedColor(color)}
+                  disabled={!inStock}
+                  title={color.charAt(0).toUpperCase() + color.slice(1)}
+                  style={{ backgroundColor: cssColor }}
+                  className={`w-5 h-5 rounded-full flex-shrink-0 transition-all ${
+                    selectedColor === color
+                      ? isLight
+                        ? 'ring-2 ring-offset-1 ring-gray-500'
+                        : 'ring-2 ring-offset-1 ring-blue-500'
+                      : 'ring-1 ring-gray-300'
+                  } ${!inStock ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer hover:ring-2 hover:ring-blue-400'}`}
+                />
+              )
+            })}
+          </div>
+        )}
 
-            {/* Size buttons */}
-            {allSizes.length > 0 && (
-              <div className="flex flex-wrap gap-0.5">
-                {allSizes.map(size => {
-                  const inStock = isOptionInStock('size', size)
-                  return (
-                    <button
-                      key={size}
-                      onClick={() => setSelectedSize(size)}
-                      disabled={!inStock}
-                      className={`min-w-[22px] px-1 py-0.5 text-[8px] font-semibold rounded border uppercase transition-colors ${selectedSize === size
-                          ? 'bg-gray-900 text-white border-gray-900'
-                          : 'bg-white text-gray-600 border-gray-300 hover:border-gray-500'
-                        } ${!inStock ? 'opacity-30 cursor-not-allowed line-through' : ''}`}
-                    >
-                      {size}
-                    </button>
-                  )
-                })}
-              </div>
-            )}
+        {/* Size buttons */}
+        {allSizes.length > 0 && !isTotalOutOfStock && (
+          <div className="flex flex-wrap gap-1">
+            {allSizes.map(size => {
+              const inStock = isOptionInStock('size', size)
+              return (
+                <button
+                  key={size}
+                  onClick={() => setSelectedSize(size)}
+                  disabled={!inStock}
+                  className={`min-w-[30px] px-2 py-0.5 text-xs font-semibold rounded-sm uppercase border transition-colors ${
+                    selectedSize === size
+                      ? 'bg-gray-900 text-white border-gray-900'
+                      : 'bg-white text-gray-600 border-gray-300 hover:border-gray-500'
+                  } ${!inStock ? 'opacity-30 cursor-not-allowed line-through' : ''}`}
+                >
+                  {size}
+                </button>
+              )
+            })}
           </div>
         )}
 
         {/* Stock count */}
-        <p className="text-[9px] text-gray-400">
-          {isTotalOutOfStock ? 'Out of stock' : `${hasSpecs ? (matchingSpec?.quantity ?? 0) : totalStock} in stock`}
+        <p className="text-xs text-gray-500">
+          {isTotalOutOfStock ? 'Out of stock' : `${stockCount} in stock`}
         </p>
 
-        {/* Qty + Add to Cart */}
-        <div className="flex items-center gap-1 mt-auto pt-0.5">
+        {/* Qty stepper + Add to Cart */}
+        <div className="flex items-center gap-2 mt-auto">
           {/* Qty stepper */}
           <div className="flex items-center border border-gray-300 rounded overflow-hidden">
             <button
               onClick={() => setQty(q => Math.max(1, q - 1))}
               disabled={isTotalOutOfStock || isSelectionOutOfStock}
-              className="px-1.5 py-[2px] text-gray-500 hover:bg-gray-100 disabled:opacity-40 transition-colors"
+              className="w-7 h-7 flex items-center justify-center text-gray-600 hover:bg-gray-100 disabled:opacity-40 text-base font-medium transition-colors"
             >
-              <Minus className="w-3 h-3" />
+              −
             </button>
-            <span className="w-7 text-center text-[10px] font-semibold text-gray-900 border-x border-gray-300 py-[2px]">
+            <span className="w-8 text-center text-xs font-semibold text-gray-900 border-x border-gray-300 h-7 flex items-center justify-center">
               {String(displayedQty).padStart(2, '0')}
             </span>
             <button
               onClick={() => setQty(q => Math.min(maxAllowedQty || 999, q + 1))}
               disabled={isTotalOutOfStock || isSelectionOutOfStock || displayedQty >= maxAllowedQty}
-              className="px-1.5 py-[2px] text-gray-500 hover:bg-gray-100 disabled:opacity-40 transition-colors"
+              className="w-7 h-7 flex items-center justify-center text-gray-600 hover:bg-gray-100 disabled:opacity-40 text-base font-medium transition-colors"
             >
-              <Plus className="w-3 h-3" />
+              +
             </button>
           </div>
 
@@ -247,7 +244,7 @@ export function ProductCard({ product }: { product: SerializedProduct }) {
           <button
             onClick={handleAdd}
             disabled={isTotalOutOfStock || isSelectionOutOfStock || (hasSpecs && !matchingSpec)}
-            className="flex-1 py-[2px] text-white text-[10px] font-semibold rounded transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed bg-blue-500 hover:bg-blue-600"
+            className="flex-1 h-7 text-white text-xs font-semibold rounded transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed bg-blue-600 hover:bg-blue-700 active:bg-blue-800"
           >
             Add to Cart
           </button>

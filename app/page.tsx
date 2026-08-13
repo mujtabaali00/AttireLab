@@ -3,9 +3,13 @@ import { ProductList } from '@/components/products/ProductList'
 import { serializeProduct } from '@/lib/product-serializer'
 import { ProductStatus } from '@prisma/client'
 
-export const revalidate = 60
+import { releaseExpiredCarts } from '@/lib/cart'
+
+export const revalidate = 0 // dynamic for stock
 
 export default async function Home() {
+  await releaseExpiredCarts()
+
   const [rawProducts, categories] = await Promise.all([
     db.product.findMany({
       where: { status: ProductStatus.ACTIVE },

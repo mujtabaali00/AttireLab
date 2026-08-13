@@ -14,7 +14,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    // The root layout already renders the Navbar (which handles /admin routes separately).
+    // Here we just add the sidebar alongside the content.
+    <div className="flex min-h-[calc(100vh-56px)] bg-gray-50">
       <AdminSidebar />
       <main className="flex-1 overflow-auto">
         {children}
