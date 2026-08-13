@@ -43,6 +43,27 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Cart is empty' }, { status: 400 })
     }
 
+    // Ensure all items are actually in the user's DB cart (where stock is reserved)
+    const userCart = await db.cart.findFirst({ 
+      where: { userId: dbUser.id },
+      include: { items: true }
+    })
+    
+    if (!userCart) {
+      return NextResponse.json({ error: 'Cart session not found or expired. Please re-add items.' }, { status: 400 })
+    }
+
+    for (const item of items) {
+      const cartItem = userCart.items.find(i => 
+        i.productId === item.productId && 
+        i.color === (item.color || null) && 
+        i.size === (item.size || null)
+      )
+      if (!cartItem || cartItem.quantity < item.quantity) {
+        return NextResponse.json({ error: `Please refresh your cart. Some items were not properly reserved.` }, { status: 400 })
+      }
+    }
+
     // Fetch products to verify stock and price
     const productIds = items.map(i => i.productId)
     const products = await db.product.findMany({
@@ -55,7 +76,6 @@ export async function POST(req: Request) {
 
     let subtotal = 0
     const orderItemsData: OrderItemPayload[] = []
-    const stockUpdates: { id: string, type: 'product' | 'spec', specId?: string, quantity: number }[] = []
 
     for (const item of items) {
       const product = products.find(p => p.id === item.productId)
@@ -63,10 +83,8 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: `Product not found or unavailable: ${item.productId}` }, { status: 404 })
       }
 
-      // Determine stock and price based on specifications if any match
-      let availableStock = product.quantity
+      // Determine price based on specifications — stock already reserved in cart
       let itemPrice = Number(product.price)
-      let specId: string | undefined = undefined
 
       if (item.color || item.size) {
         const spec = product.specifications.find(
@@ -74,14 +92,8 @@ export async function POST(req: Request) {
                (s.size === item.size || (!s.size && !item.size))
         )
         if (spec) {
-          availableStock = spec.quantity
           itemPrice = spec.price ? Number(spec.price) : itemPrice
-          specId = spec.id
         }
-      }
-
-      if (availableStock < item.quantity) {
-        return NextResponse.json({ error: `Insufficient stock for ${product.name} ${item.color || ''} ${item.size || ''}` }, { status: 409 })
       }
 
       subtotal += itemPrice * item.quantity
@@ -93,43 +105,23 @@ export async function POST(req: Request) {
         color: item.color || null,
         size: item.size || null,
       })
-
-      stockUpdates.push({
-        id: product.id,
-        type: specId ? 'spec' : 'product',
-        specId,
-        quantity: item.quantity
-      })
     }
 
     const tax = subtotal * 0.10 // 10% tax
     const total = subtotal + tax
 
-    // Transaction to create order and decrement stock
+    // Transaction to create order and clear reserved items from cart
     const result = await db.$transaction(async (tx) => {
-      // Re-verify stock inside transaction to prevent negative stock from race conditions
-      for (const update of stockUpdates) {
-        if (update.type === 'product') {
-          const p = await tx.product.findUnique({ where: { id: update.id } })
-          if (!p || p.quantity < update.quantity) throw new Error(`Insufficient stock for product ${update.id}`)
-          await tx.product.update({
-            where: { id: update.id },
-            data: { quantity: { decrement: update.quantity } }
-          })
-        } else if (update.type === 'spec' && update.specId) {
-          const s = await tx.productSpecification.findUnique({ where: { id: update.specId } })
-          if (!s || s.quantity < update.quantity) throw new Error(`Insufficient stock for variant ${update.specId}`)
-          await tx.productSpecification.update({
-            where: { id: update.specId },
-            data: { quantity: { decrement: update.quantity } }
-          })
-          const p = await tx.product.findUnique({ where: { id: update.id } })
-          if (!p || p.quantity < update.quantity) throw new Error(`Insufficient stock for product ${update.id}`)
-          await tx.product.update({
-            where: { id: update.id },
-            data: { quantity: { decrement: update.quantity } }
-          })
-        }
+      // Clear ordered items from the cart so they don't eventually expire and restore stock
+      for (const item of items) {
+        await tx.cartItem.deleteMany({
+          where: {
+            cartId: userCart.id,
+            productId: item.productId,
+            color: item.color || null,
+            size: item.size || null
+          }
+        })
       }
 
       const order = await tx.order.create({
@@ -153,6 +145,18 @@ export async function POST(req: Request) {
           type: 'ORDER_CONFIRMED'
         }
       })
+
+      // Notify all admins
+      const admins = await tx.user.findMany({ where: { role: 'ADMIN' } })
+      if (admins.length > 0) {
+        await tx.notification.createMany({
+          data: admins.map(admin => ({
+            userId: admin.id,
+            message: `New order #${order.id.slice(-8).toUpperCase()} placed by ${dbUser.name || 'a customer'}.`,
+            type: 'ORDER_CONFIRMED'
+          }))
+        })
+      }
 
       return order
     })

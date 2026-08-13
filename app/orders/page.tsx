@@ -2,7 +2,6 @@ import { auth } from '@/auth'
 import { db } from '@/lib/db'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft } from 'lucide-react'
 import { OrdersTable, OrderRow, DBOrderStatus } from '@/components/orders/OrdersTable'
 
 export const metadata = { title: 'Orders' }
@@ -28,15 +27,17 @@ export default async function OrdersPage() {
   }))
 
   return (
-    <div>
+    <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
       {/* Title */}
-      <div className="mb-5">
-        <Link href="/" className="inline-flex items-center text-blue-500 hover:text-blue-600 font-semibold text-lg">
-          <ArrowLeft className="w-4 h-4 mr-1.5" /> My Orders
+      <div className="mb-8">
+        <Link href="/" className="inline-flex items-center text-blue-500 hover:text-blue-600 font-medium text-[28px] tracking-tight transition-colors">
+          <span className="mr-3 font-normal">&larr;</span> Orders
         </Link>
       </div>
 
-      <OrdersTable orders={orderRows} isAdmin={false} />
+      <div className="border border-gray-200">
+        <OrdersTable orders={orderRows} isAdmin={false} />
+      </div>
     </div>
   )
 }

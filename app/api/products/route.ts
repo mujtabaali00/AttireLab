@@ -4,6 +4,7 @@ import { db } from '@/lib/db'
 import { apiSuccess, apiError } from '@/lib/api-response'
 import { createProductSchema } from '@/lib/validations/product.schema'
 import { serializeProduct } from '@/lib/product-serializer'
+import { releaseExpiredCarts } from '@/lib/cart'
 import { logger } from '@/lib/logger'
 import { ZodError } from 'zod'
 import { ProductStatus } from '@prisma/client'
@@ -11,6 +12,8 @@ import { ProductStatus } from '@prisma/client'
 // GET /api/products — public, paginated
 export async function GET(req: NextRequest) {
   try {
+    await releaseExpiredCarts()
+    
     const session = await auth()
     const isAdmin = session?.user?.role === 'ADMIN'
     

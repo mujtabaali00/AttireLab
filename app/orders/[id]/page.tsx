@@ -9,11 +9,11 @@ import { OrderStatus } from '@prisma/client'
 export const metadata = { title: 'Order Detail' }
 
 const statusStyles: Record<OrderStatus, { label: string; color: string }> = {
-  PENDING:    { label: 'Pending',     color: 'bg-gray-100 text-gray-700 border-gray-200' },
-  PROCESSING: { label: 'In Progress', color: 'bg-yellow-100 text-yellow-700 border-yellow-200' },
-  SHIPPED:    { label: 'Dispatched',  color: 'bg-blue-100 text-blue-700 border-blue-200' },
-  DELIVERED:  { label: 'Delivered',   color: 'bg-green-100 text-green-700 border-green-200' },
-  CANCELLED:  { label: 'Cancelled',   color: 'bg-red-100 text-red-700 border-red-200' },
+  PENDING:    { label: 'Pending',     color: 'bg-gray-100 text-gray-700' },
+  PROCESSING: { label: 'In Progress', color: 'bg-yellow-400 text-white' },
+  SHIPPED:    { label: 'Dispatched',  color: 'bg-blue-500 text-white' },
+  DELIVERED:  { label: 'Delivered',   color: 'bg-green-500 text-white' },
+  CANCELLED:  { label: 'Rejected',    color: 'bg-red-500 text-white' },
 }
 
 export default async function OrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -40,17 +40,19 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
   const statusInfo = statusStyles[order.status]
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 sm:p-6 lg:p-8">
+    <div className="max-w-5xl mx-auto py-6 px-4 sm:px-0">
       {/* Header */}
-      <div className="flex items-center gap-3 mb-6">
-        <Link href="/orders" className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
-          <ArrowLeft className="w-4 h-4" />
-        </Link>
-        <div>
-          <h1 className="text-lg font-bold text-[#1a237e]">Order Detail</h1>
-          <p className="text-sm text-gray-500 font-mono">#{order.id.slice(-8).toUpperCase()}</p>
+      <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center gap-4">
+          <Link href="/orders" className="inline-flex items-center text-blue-500 hover:text-blue-600 font-medium text-2xl tracking-tight transition-colors">
+            <span className="mr-3 font-normal">&larr;</span> Order Detail
+          </Link>
+          <span className="text-lg text-gray-300 font-light hidden sm:inline-block">|</span>
+          <span className="text-sm font-mono text-gray-500 bg-gray-50 px-3 py-1.5 rounded-md border border-gray-100 hidden sm:inline-block">
+            #{order.id.slice(-8).toUpperCase()}
+          </span>
         </div>
-        <span className={`ml-auto inline-flex items-center px-3 py-1.5 text-xs font-semibold rounded-full border ${statusInfo.color}`}>
+        <span className={`inline-flex items-center px-3 py-1 text-sm font-medium rounded ${statusInfo.color}`}>
           {statusInfo.label}
         </span>
       </div>
