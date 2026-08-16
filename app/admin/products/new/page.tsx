@@ -21,6 +21,10 @@ import {
 } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 
+// The schema's optional/enum fields (e.g. specifications.color) go through
+// z.preprocess, which makes zod's *input* type looser than its *output* type.
+// zodResolver's Input/Output generics reflect that split, so the form must too.
+type FormInput = z.input<typeof createProductSchema>
 type FormValues = z.infer<typeof createProductSchema>
 
 interface Category {
@@ -57,7 +61,7 @@ export default function NewProductPage() {
     setValue,
     watch,
     formState: { errors },
-  } = useForm<FormValues>({
+  } = useForm<FormInput, any, FormValues>({
     resolver: zodResolver(createProductSchema),
     defaultValues: {
       imageUrls: [],

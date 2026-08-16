@@ -9,8 +9,8 @@ export async function GET() {
     await releaseExpiredCarts()
     const cart = await getCart()
     return apiSuccess(cart)
-  } catch (error: any) {
-    return apiError(error.message, 500)
+  } catch (error) {
+    return apiError(error instanceof Error ? error.message : 'Unknown error', 500)
   }
 }
 
@@ -110,8 +110,8 @@ export async function POST(req: NextRequest) {
 
     const updatedCart = await getCart()
     return apiSuccess(updatedCart)
-  } catch (error: any) {
-    return apiError(error.message, 500)
+  } catch (error) {
+    return apiError(error instanceof Error ? error.message : 'Unknown error', 500)
   }
 }
 
@@ -174,8 +174,8 @@ export async function DELETE(req: NextRequest) {
 
     const updatedCart = await getCart()
     return apiSuccess(updatedCart)
-  } catch (error: any) {
-    return apiError(error.message, 500)
+  } catch (error) {
+    return apiError(error instanceof Error ? error.message : 'Unknown error', 500)
   }
 }
 
@@ -186,6 +186,8 @@ export async function PATCH(req: NextRequest) {
     if (!itemId || quantity === undefined || quantity < 1) return apiError('Invalid data', 400)
 
     const cart = await getCart()
+    if (!cart) return apiError('Cart not found', 404)
+
     const item = await db.cartItem.findUnique({ where: { id: itemId } })
     if (!item || item.cartId !== cart.id) return apiError('Item not found', 404)
 
@@ -229,7 +231,7 @@ export async function PATCH(req: NextRequest) {
 
     const updatedCart = await getCart()
     return apiSuccess(updatedCart)
-  } catch (error: any) {
-    return apiError(error.message, 500)
+  } catch (error) {
+    return apiError(error instanceof Error ? error.message : 'Unknown error', 500)
   }
 }

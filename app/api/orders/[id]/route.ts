@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server'
 import { auth } from '@/auth'
 import { db } from '@/lib/db'
 import { apiSuccess, apiError } from '@/lib/api-response'
-import { OrderStatus } from '@prisma/client'
+import { OrderStatus, NotificationType } from '@prisma/client'
 
 type RouteCtx = { params: Promise<{ id: string }> }
 
@@ -107,7 +107,7 @@ export async function PATCH(req: NextRequest, { params }: RouteCtx) {
       }
 
       // Notify user about status change
-      const statusMessages: Partial<Record<OrderStatus, { message: string; type: string }>> = {
+      const statusMessages: Partial<Record<OrderStatus, { message: string; type: NotificationType }>> = {
         CANCELLED: {
           message: `Your order #${id.slice(-8).toUpperCase()} has been cancelled.`,
           type: 'ORDER_CANCELLED'
@@ -132,7 +132,7 @@ export async function PATCH(req: NextRequest, { params }: RouteCtx) {
           data: {
             userId: existing.userId,
             message: notifData.message,
-            type: notifData.type as any,
+            type: notifData.type,
           }
         })
       }

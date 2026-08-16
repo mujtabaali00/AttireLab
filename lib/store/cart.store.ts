@@ -26,23 +26,57 @@ interface CartStore {
   getSubtotal: () => number
 }
 
+// Shape of the JSON payload returned by /api/cart (getCart() in lib/cart.ts,
+// serialized over the wire — Decimal fields arrive as strings, dates as ISO strings).
+interface CartApiSpecification {
+  color: string | null
+  size: string | null
+  price: string | number | null
+  imageUrl: string | null
+}
+
+interface CartApiProduct {
+  status: string
+  name: string
+  price: string | number
+  images: { url: string }[]
+  specifications: CartApiSpecification[]
+}
+
+interface CartApiItem {
+  id: string
+  productId: string
+  quantity: number
+  color: string | null
+  size: string | null
+  product: CartApiProduct
+}
+
+interface CartApiResponse {
+  items: CartApiItem[]
+  expiresAt: string | null
+}
+
 // Convert DB Cart to our frontend state format
-const mapDbCartToState = (dbCart: any): { items: CartItem[], expiresAt: string | null } => {
+const mapDbCartToState = (dbCart: CartApiResponse | null): { items: CartItem[], expiresAt: string | null } => {
   if (!dbCart) return { items: [], expiresAt: null }
-  
+
   const items = dbCart.items
-    .filter((item: any) => item.product?.status === 'ACTIVE')
-    .map((item: any) => ({
-    id: item.id,
-    productId: item.productId,
-    name: item.product.name,
-    price: Number(item.product.specifications?.find((s: any) => s.color === item.color && s.size === item.size)?.price || item.product.price),
-    imageUrl: item.product.specifications?.find((s: any) => s.color === item.color && s.size === item.size)?.imageUrl || item.product.images[0]?.url || '',
-    quantity: item.quantity,
-    maxStock: 99, // Backend enforces actual stock limits now
-    color: item.color || undefined,
-    size: item.size || undefined,
-  }))
+    .filter(item => item.product?.status === 'ACTIVE')
+    .map(item => {
+      const matchingSpec = item.product.specifications?.find(s => s.color === item.color && s.size === item.size)
+      return {
+        id: item.id,
+        productId: item.productId,
+        name: item.product.name,
+        price: Number(matchingSpec?.price ?? item.product.price),
+        imageUrl: matchingSpec?.imageUrl || item.product.images[0]?.url || '',
+        quantity: item.quantity,
+        maxStock: 99, // Backend enforces actual stock limits now
+        color: item.color || undefined,
+        size: item.size || undefined,
+      }
+    })
 
   return { items, expiresAt: dbCart.expiresAt }
 }
@@ -89,7 +123,7 @@ export const useCartStore = create<CartStore>((set, get) => ({
       
       const { items, expiresAt } = mapDbCartToState(data.data)
       set({ items, expiresAt })
-    } catch (error: any) {
+    } catch (error) {
       throw error
     } finally {
       set({ isLoading: false })
@@ -105,7 +139,7 @@ export const useCartStore = create<CartStore>((set, get) => ({
       
       const { items, expiresAt } = mapDbCartToState(data.data)
       set({ items, expiresAt })
-    } catch (error: any) {
+    } catch (error) {
       throw error
     } finally {
       set({ isLoading: false })
@@ -125,7 +159,7 @@ export const useCartStore = create<CartStore>((set, get) => ({
       
       const { items, expiresAt } = mapDbCartToState(data.data)
       set({ items, expiresAt })
-    } catch (error: any) {
+    } catch (error) {
       throw error
     } finally {
       set({ isLoading: false })
@@ -141,7 +175,7 @@ export const useCartStore = create<CartStore>((set, get) => ({
       
       const { items, expiresAt } = mapDbCartToState(data.data)
       set({ items, expiresAt })
-    } catch (error: any) {
+    } catch (error) {
       throw error
     } finally {
       set({ isLoading: false })

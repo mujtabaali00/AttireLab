@@ -3,7 +3,7 @@ import type { Product, ProductImage, ProductSpecification, Category } from '@pri
 type ProductWithRelations = Product & {
   images: ProductImage[]
   specifications?: ProductSpecification[]
-  category?: Category
+  category?: Category | null
 }
 
 export function serializeProduct(product: ProductWithRelations) {
