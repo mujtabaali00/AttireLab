@@ -7,9 +7,10 @@ import bcrypt from 'bcryptjs'
 import { loginSchema } from '@/lib/validations/auth.schema'
 import { authConfig } from './auth.config'
 import { logger } from '@/lib/logger'
+import { APP_CONSTANTS } from '@/lib/constants'
 
-const REMEMBER_ME_MAX_AGE = 24 * 60 * 60 // 24 hours
-const DEFAULT_MAX_AGE = 12 * 60 * 60 // 12 hours
+const REMEMBER_ME_MAX_AGE = APP_CONSTANTS.SESSION.REMEMBER_ME_HOURS * 60 * 60
+const DEFAULT_MAX_AGE = APP_CONSTANTS.SESSION.DEFAULT_HOURS * 60 * 60
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,

@@ -4,10 +4,11 @@ import { serializeProduct } from '@/lib/product-serializer'
 import { ProductStatus } from '@prisma/client'
 
 import { releaseExpiredCarts } from '@/lib/cart'
+import { APP_CONSTANTS } from '@/lib/constants'
 
 export const revalidate = 0 // dynamic for stock
 
-const PAGE_SIZE = 20
+const PAGE_SIZE = APP_CONSTANTS.PRODUCTS.PAGE_SIZE
 
 export default async function Home({
   searchParams,
