@@ -15,5 +15,11 @@ export const APP_CONSTANTS = {
   CHECKOUT: {
     MAX_SAVED_ADDRESSES: 3,
     ADDRESSES_STORAGE_KEY: 'attirelab_recent_addresses',
-  }
+  },
+
+  // Product Listing Configuration
+  PRODUCTS: {
+    PAGE_SIZE: 20,
+    MAX_PAGE_SIZE: 100,
+  },
 }

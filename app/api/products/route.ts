@@ -8,6 +8,7 @@ import { releaseExpiredCarts } from '@/lib/cart'
 import { logger } from '@/lib/logger'
 import { ZodError } from 'zod'
 import { Prisma, ProductStatus } from '@prisma/client'
+import { APP_CONSTANTS } from '@/lib/constants'
 
 // GET /api/products — public, paginated
 export async function GET(req: NextRequest) {
@@ -19,7 +20,10 @@ export async function GET(req: NextRequest) {
     
     const { searchParams } = new URL(req.url)
     const page = Math.max(1, Number(searchParams.get('page') || 1))
-    const limit = Math.min(100, Number(searchParams.get('limit') || 20))
+    const limit = Math.min(
+      APP_CONSTANTS.PRODUCTS.MAX_PAGE_SIZE,
+      Number(searchParams.get('limit') || APP_CONSTANTS.PRODUCTS.PAGE_SIZE)
+    )
     const search = searchParams.get('search') || ''
     const categoryId = searchParams.get('categoryId') || undefined
     const statusParam = searchParams.get('status') as ProductStatus | null
