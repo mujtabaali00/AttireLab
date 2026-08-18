@@ -50,18 +50,18 @@ model User {
 }
 
 model Account {
-  id                 String  @id @default(cuid())
-  userId             String
-  type               String
-  provider           String
-  providerAccountId  String
-  refresh_token      String?  @db.Text
-  access_token       String?  @db.Text
-  expires_at         Int?
-  token_type         String?
-  scope              String?
-  id_token           String?  @db.Text
-  session_state      String?
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -77,20 +77,20 @@ model Category {
 }
 
 model Product {
-  id            String                 @id @default(cuid())
-  name          String
-  description   String?
-  price         Decimal                @db.Decimal(10, 2)
-  quantity      Int                    @default(0)
-  status        ProductStatus          @default(ACTIVE)
-  categoryId    String?
-  category      Category?              @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  images        ProductImage[]
+  id             String                 @id @default(cuid())
+  name           String
+  description    String?
+  price          Decimal                @db.Decimal(10, 2)
+  quantity       Int                    @default(0)
+  status         ProductStatus          @default(ACTIVE)
+  categoryId     String?
+  category       Category?              @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  images         ProductImage[]
   specifications ProductSpecification[]
-  orderItems    OrderItem[]
-  cartItems     CartItem[]
-  createdAt     DateTime               @default(now())
-  updatedAt     DateTime               @updatedAt
+  orderItems     OrderItem[]
+  cartItems      CartItem[]
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
 }
 
 model ProductImage {
@@ -115,27 +115,35 @@ model Order {
 }
 
 model OrderItem {
-  id          String  @id @default(cuid())
-  orderId     String
-  order       Order   @relation(fields: [orderId], references: [id])
-  productId   String
-  product     Product @relation(fields: [productId], references: [id])
-  productName String
-  unitPrice   Decimal @db.Decimal(10, 2)
-  quantity    Int
-  color       String?
-  size        String?
+  id              String                @id @default(cuid())
+  orderId         String
+  order           Order                 @relation(fields: [orderId], references: [id])
+  productId       String
+  product         Product               @relation(fields: [productId], references: [id])
+  specificationId String?
+  specification   ProductSpecification? @relation(fields: [specificationId], references: [id], onDelete: SetNull)
+  productName     String
+  unitPrice       Decimal               @db.Decimal(10, 2)
+  quantity        Int
+  // Denormalized snapshot of the variant at order time — kept even if the
+  // specification is later edited/deleted, so past orders still display correctly.
+  color           String?
+  size            String?
 }
 
 model ProductSpecification {
-  id        String  @id @default(cuid())
-  productId String
-  color     String? // 'red', 'blue', 'brown', 'grey'
-  size      String? // 'xs', 's', 'm', 'l'
-  quantity  Int     @default(0)
-  price     Decimal? @db.Decimal(10, 2)
-  imageUrl  String?
-  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  id         String      @id @default(cuid())
+  productId  String
+  color      String? // 'red', 'blue', 'brown', 'grey'
+  size       String? // 'xs', 's', 'm', 'l'
+  quantity   Int         @default(0)
+  price      Decimal?    @db.Decimal(10, 2)
+  imageUrl   String?
+  product    Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  cartItems  CartItem[]
+  orderItems OrderItem[]
+
+  @@unique([productId, color, size])
 }
 
 model PasswordResetToken {
@@ -169,12 +177,12 @@ model Cart {
 }
 
 model CartItem {
-  id        String   @id @default(cuid())
-  cartId    String
-  cart      Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade)
-  productId String
-  product   Product  @relation(fields: [productId], references: [id])
-  quantity  Int
-  color     String?
-  size      String?
+  id              String                @id @default(cuid())
+  cartId          String
+  cart            Cart                  @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  productId       String
+  product         Product               @relation(fields: [productId], references: [id])
+  specificationId String?
+  specification   ProductSpecification? @relation(fields: [specificationId], references: [id], onDelete: Cascade)
+  quantity        Int
 }

@@ -11,6 +11,7 @@ declare module 'next-auth' {
   // Augment the User object so it has 'role' available in jwt() callback
   interface User {
     role?: 'CUSTOMER' | 'ADMIN'
+    rememberMe?: boolean
   }
 }
 
@@ -18,5 +19,6 @@ declare module 'next-auth/jwt' {
   interface JWT {
     id: string
     role: 'CUSTOMER' | 'ADMIN'
+    rememberMe?: boolean
   }
 }

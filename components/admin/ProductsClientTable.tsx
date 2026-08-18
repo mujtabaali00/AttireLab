@@ -176,7 +176,7 @@ export function ProductsClientTable({
 
                       {/* Price */}
                       <td className="px-4 py-3 text-gray-700">
-                        Rs. {Number(product.price).toFixed(2)}
+                        Rs {Number(product.price).toLocaleString()}
                       </td>
 
                       {/* Category */}

@@ -9,17 +9,21 @@ export async function GET() {
     await releaseExpiredCarts()
     const cart = await getCart()
     return apiSuccess(cart)
-  } catch (error: any) {
-    return apiError(error.message, 500)
+  } catch (error) {
+    return apiError(error instanceof Error ? error.message : 'Unknown error', 500)
   }
 }
 
 export async function POST(req: NextRequest) {
   try {
     await releaseExpiredCarts()
-    
+
     const body = await req.json()
-    const { productId, color, size, quantity } = body
+    const { productId, specificationId, quantity } = body as {
+      productId?: string
+      specificationId?: string | null
+      quantity?: number
+    }
 
     if (!productId || !quantity) {
       return apiError('Missing required fields', 400)
@@ -28,28 +32,15 @@ export async function POST(req: NextRequest) {
     const cart = await getCart()
     if (!cart) return apiError('Could not get cart', 500)
 
-    // Find the product/specification to check actual stock
-    let maxStock = 0
-    let specId = null
-    let productName = ''
+    const product = await db.product.findUnique({ where: { id: productId } })
+    if (!product) return apiError('Product not found', 404)
 
-    if (color || size) {
-      const spec = await db.productSpecification.findFirst({
-        where: { productId, color: color || null, size: size || null }
-      })
-      if (!spec) return apiError('Variant not found', 404)
+    // Find the specification (variant) to check actual stock
+    let maxStock = product.quantity
+    if (specificationId) {
+      const spec = await db.productSpecification.findUnique({ where: { id: specificationId } })
+      if (!spec || spec.productId !== productId) return apiError('Variant not found', 404)
       maxStock = spec.quantity
-      specId = spec.id
-    } else {
-      const prod = await db.product.findUnique({ where: { id: productId } })
-      if (!prod) return apiError('Product not found', 404)
-      maxStock = prod.quantity
-      productName = prod.name
-    }
-
-    if (!productName) {
-      const prod = await db.product.findUnique({ where: { id: productId }, select: { name: true } })
-      productName = prod?.name || 'Item'
     }
 
     if (maxStock < quantity) {
@@ -59,9 +50,9 @@ export async function POST(req: NextRequest) {
     // Wrap in transaction: update stock & add to cart
     await db.$transaction(async (tx) => {
       // Deduct stock
-      if (specId) {
+      if (specificationId) {
         await tx.productSpecification.update({
-          where: { id: specId },
+          where: { id: specificationId },
           data: { quantity: { decrement: quantity } }
         })
       }
@@ -71,8 +62,8 @@ export async function POST(req: NextRequest) {
       })
 
       // Add or update cart item
-      const existingItem = cart.items.find(i => i.productId === productId && i.color === (color || null) && i.size === (size || null))
-      
+      const existingItem = cart.items.find(i => i.productId === productId && i.specificationId === (specificationId || null))
+
       if (existingItem) {
         await tx.cartItem.update({
           where: { id: existingItem.id },
@@ -83,13 +74,12 @@ export async function POST(req: NextRequest) {
           data: {
             cartId: cart.id,
             productId,
-            quantity,
-            color: color || null,
-            size: size || null
+            specificationId: specificationId || null,
+            quantity
           }
         })
       }
-      
+
       // Update cart expiration
       await tx.cart.update({
         where: { id: cart.id },
@@ -101,7 +91,7 @@ export async function POST(req: NextRequest) {
         await tx.notification.create({
           data: {
             userId: cart.userId,
-            message: `"${productName}" has been added to your cart.`,
+            message: `"${product.name}" has been added to your cart.`,
             type: 'ADDED_TO_CART'
           }
         })
@@ -110,8 +100,8 @@ export async function POST(req: NextRequest) {
 
     const updatedCart = await getCart()
     return apiSuccess(updatedCart)
-  } catch (error: any) {
-    return apiError(error.message, 500)
+  } catch (error) {
+    return apiError(error instanceof Error ? error.message : 'Unknown error', 500)
   }
 }
 
@@ -129,16 +119,11 @@ export async function DELETE(req: NextRequest) {
 
       await db.$transaction(async (tx) => {
         // Restore stock
-        if (item.color || item.size) {
-          const spec = await tx.productSpecification.findFirst({
-            where: { productId: item.productId, color: item.color, size: item.size }
+        if (item.specificationId) {
+          await tx.productSpecification.update({
+            where: { id: item.specificationId },
+            data: { quantity: { increment: item.quantity } }
           })
-          if (spec) {
-            await tx.productSpecification.update({
-              where: { id: spec.id },
-              data: { quantity: { increment: item.quantity } }
-            })
-          }
         }
         await tx.product.update({
           where: { id: item.productId },
@@ -152,16 +137,11 @@ export async function DELETE(req: NextRequest) {
       // Clear entire cart
       await db.$transaction(async (tx) => {
         for (const item of cart.items) {
-          if (item.color || item.size) {
-            const spec = await tx.productSpecification.findFirst({
-              where: { productId: item.productId, color: item.color, size: item.size }
+          if (item.specificationId) {
+            await tx.productSpecification.update({
+              where: { id: item.specificationId },
+              data: { quantity: { increment: item.quantity } }
             })
-            if (spec) {
-              await tx.productSpecification.update({
-                where: { id: spec.id },
-                data: { quantity: { increment: item.quantity } }
-              })
-            }
           }
           await tx.product.update({
             where: { id: item.productId },
@@ -174,8 +154,8 @@ export async function DELETE(req: NextRequest) {
 
     const updatedCart = await getCart()
     return apiSuccess(updatedCart)
-  } catch (error: any) {
-    return apiError(error.message, 500)
+  } catch (error) {
+    return apiError(error instanceof Error ? error.message : 'Unknown error', 500)
   }
 }
 
@@ -186,6 +166,8 @@ export async function PATCH(req: NextRequest) {
     if (!itemId || quantity === undefined || quantity < 1) return apiError('Invalid data', 400)
 
     const cart = await getCart()
+    if (!cart) return apiError('Cart not found', 404)
+
     const item = await db.cartItem.findUnique({ where: { id: itemId } })
     if (!item || item.cartId !== cart.id) return apiError('Item not found', 404)
 
@@ -194,21 +176,18 @@ export async function PATCH(req: NextRequest) {
     if (diff > 0) {
       // Need more stock
       let maxStock = 0
-      let specId = null
-      if (item.color || item.size) {
-        const spec = await db.productSpecification.findFirst({
-          where: { productId: item.productId, color: item.color, size: item.size }
-        })
-        if (spec) { maxStock = spec.quantity; specId = spec.id }
+      if (item.specificationId) {
+        const spec = await db.productSpecification.findUnique({ where: { id: item.specificationId } })
+        if (spec) maxStock = spec.quantity
       } else {
         const prod = await db.product.findUnique({ where: { id: item.productId } })
-        if (prod) { maxStock = prod.quantity }
+        if (prod) maxStock = prod.quantity
       }
 
       if (maxStock < diff) return apiError(`Only ${maxStock} items left in stock`, 400)
 
       await db.$transaction(async (tx) => {
-        if (specId) await tx.productSpecification.update({ where: { id: specId }, data: { quantity: { decrement: diff } } })
+        if (item.specificationId) await tx.productSpecification.update({ where: { id: item.specificationId }, data: { quantity: { decrement: diff } } })
         await tx.product.update({ where: { id: item.productId }, data: { quantity: { decrement: diff } } })
         await tx.cartItem.update({ where: { id: itemId }, data: { quantity } })
         await tx.cart.update({ where: { id: cart.id }, data: { expiresAt: new Date(Date.now() + APP_CONSTANTS.CART.EXPIRATION_HOURS * 60 * 60 * 1000) } })
@@ -217,10 +196,7 @@ export async function PATCH(req: NextRequest) {
       // Returning stock
       const absDiff = Math.abs(diff)
       await db.$transaction(async (tx) => {
-        if (item.color || item.size) {
-          const spec = await tx.productSpecification.findFirst({ where: { productId: item.productId, color: item.color, size: item.size } })
-          if (spec) await tx.productSpecification.update({ where: { id: spec.id }, data: { quantity: { increment: absDiff } } })
-        }
+        if (item.specificationId) await tx.productSpecification.update({ where: { id: item.specificationId }, data: { quantity: { increment: absDiff } } })
         await tx.product.update({ where: { id: item.productId }, data: { quantity: { increment: absDiff } } })
         await tx.cartItem.update({ where: { id: itemId }, data: { quantity } })
         await tx.cart.update({ where: { id: cart.id }, data: { expiresAt: new Date(Date.now() + APP_CONSTANTS.CART.EXPIRATION_HOURS * 60 * 60 * 1000) } })
@@ -229,7 +205,7 @@ export async function PATCH(req: NextRequest) {
 
     const updatedCart = await getCart()
     return apiSuccess(updatedCart)
-  } catch (error: any) {
-    return apiError(error.message, 500)
+  } catch (error) {
+    return apiError(error instanceof Error ? error.message : 'Unknown error', 500)
   }
 }

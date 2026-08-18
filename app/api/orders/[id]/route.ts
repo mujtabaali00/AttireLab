@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server'
 import { auth } from '@/auth'
 import { db } from '@/lib/db'
 import { apiSuccess, apiError } from '@/lib/api-response'
-import { OrderStatus } from '@prisma/client'
+import { OrderStatus, NotificationType } from '@prisma/client'
 
 type RouteCtx = { params: Promise<{ id: string }> }
 
@@ -19,7 +19,7 @@ export async function GET(_req: NextRequest, { params }: RouteCtx) {
       include: {
         user: { select: { name: true, email: true } },
         items: {
-          include: { product: { include: { images: true } } }
+          include: { product: { include: { images: true } }, specification: true }
         }
       }
     })
@@ -57,11 +57,7 @@ export async function PATCH(req: NextRequest, { params }: RouteCtx) {
     const existing = await db.order.findUnique({
       where: { id },
       include: {
-        items: {
-          include: {
-            product: { include: { specifications: true } }
-          }
-        }
+        items: true
       }
     })
 
@@ -80,24 +76,11 @@ export async function PATCH(req: NextRequest, { params }: RouteCtx) {
 
       if (shouldRestoreStock) {
         for (const item of existing.items) {
-          // Find matching spec if color/size exist
-          if (item.color || item.size) {
-            const spec = item.product.specifications.find(
-              s =>
-                (s.color === item.color || (!s.color && !item.color)) &&
-                (s.size === item.size || (!s.size && !item.size))
-            )
-            if (spec) {
-              await tx.productSpecification.update({
-                where: { id: spec.id },
-                data: { quantity: { increment: item.quantity } }
-              })
-              await tx.product.update({
-                where: { id: item.productId },
-                data: { quantity: { increment: item.quantity } }
-              })
-              continue
-            }
+          if (item.specificationId) {
+            await tx.productSpecification.update({
+              where: { id: item.specificationId },
+              data: { quantity: { increment: item.quantity } }
+            })
           }
           await tx.product.update({
             where: { id: item.productId },
@@ -107,7 +90,7 @@ export async function PATCH(req: NextRequest, { params }: RouteCtx) {
       }
 
       // Notify user about status change
-      const statusMessages: Partial<Record<OrderStatus, { message: string; type: string }>> = {
+      const statusMessages: Partial<Record<OrderStatus, { message: string; type: NotificationType }>> = {
         CANCELLED: {
           message: `Your order #${id.slice(-8).toUpperCase()} has been cancelled.`,
           type: 'ORDER_CANCELLED'
@@ -132,7 +115,7 @@ export async function PATCH(req: NextRequest, { params }: RouteCtx) {
           data: {
             userId: existing.userId,
             message: notifData.message,
-            type: notifData.type as any,
+            type: notifData.type,
           }
         })
       }

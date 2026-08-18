@@ -45,7 +45,7 @@ export function ResetPasswordClientForm({ token }: { token: string }) {
         const result = await response.json()
         setError(result.error || "An error occurred.")
       } else {
-        setSuccess("Your password has been updated. Please check your email.")
+        setSuccess("Your password has been updated.")
         setTimeout(() => {
           router.push("/auth/login")
         }, 3000)
@@ -79,10 +79,10 @@ export function ResetPasswordClientForm({ token }: { token: string }) {
 
         <div className="space-y-1">
           <Label htmlFor="password">Enter new password</Label>
-          <Input 
-            id="password" 
-            placeholder="enter password" 
-            type="password" 
+          <Input
+            id="password"
+            placeholder="enter password"
+            type="password"
             {...register("password")}
           />
           {errors.password && (
@@ -92,10 +92,10 @@ export function ResetPasswordClientForm({ token }: { token: string }) {
 
         <div className="space-y-1">
           <Label htmlFor="confirmPassword">Confirm password</Label>
-          <Input 
-            id="confirmPassword" 
-            placeholder="confirm password" 
-            type="password" 
+          <Input
+            id="confirmPassword"
+            placeholder="confirm password"
+            type="password"
             {...register("confirmPassword")}
           />
           {errors.confirmPassword && (

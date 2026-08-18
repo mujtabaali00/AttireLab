@@ -1,26 +1,29 @@
 import type { NextAuthConfig } from 'next-auth'
 import Google from 'next-auth/providers/google'
 
+const googleClientId = process.env.AUTH_GOOGLE_ID || process.env.GOOGLE_CLIENT_ID
+const googleClientSecret = process.env.AUTH_GOOGLE_SECRET || process.env.GOOGLE_CLIENT_SECRET
+
+if (!googleClientId || !googleClientSecret) {
+  throw new Error('Missing Google OAuth env vars: set AUTH_GOOGLE_ID/AUTH_GOOGLE_SECRET or GOOGLE_CLIENT_ID/GOOGLE_CLIENT_SECRET')
+}
+
 export const authConfig = {
   pages: {
     signIn: '/auth/login',
   },
   providers: [
     Google({
-      clientId: process.env.AUTH_GOOGLE_ID || process.env.GOOGLE_CLIENT_ID,
-      clientSecret: process.env.AUTH_GOOGLE_SECRET || process.env.GOOGLE_CLIENT_SECRET,
+      clientId: googleClientId,
+      clientSecret: googleClientSecret,
     }),
   ],
   callbacks: {
     async jwt({ token, user }) {
-      if (user) {
+      if (user?.id) {
         token.id = user.id
         token.role = user.role || 'CUSTOMER'
-        
-        // Custom expiration logic based on rememberMe
-        const rememberMe = (user as any).rememberMe
-        const hours = rememberMe ? 24 : 12
-        token.exp = Math.floor(Date.now() / 1000) + (hours * 60 * 60)
+        token.rememberMe = user.rememberMe ?? false
       }
       return token
     },
@@ -28,6 +31,12 @@ export const authConfig = {
       if (session.user && token.id) {
         session.user.id = token.id as string
         session.user.role = (token.role as 'CUSTOMER' | 'ADMIN') || 'CUSTOMER'
+      }
+      // Auth.js always reports `session.expires` as now + the static
+      // session.maxAge config, ignoring the JWT's real per-user `exp` set by
+      // our custom jwt.encode — override it here so clients see the true expiry.
+      if (typeof token.exp === 'number') {
+        session.expires = new Date(token.exp * 1000).toISOString() as typeof session.expires
       }
       return session
     },

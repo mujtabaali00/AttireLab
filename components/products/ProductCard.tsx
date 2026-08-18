@@ -50,19 +50,24 @@ export function ProductCard({ product }: { product: SerializedProduct }) {
   const [qty, setQty] = useState(1)
   const addItem = useCartStore(state => state.addItem)
 
-  const hasSpecs = product.specifications && product.specifications.length > 0
+  // Local, optimistically-updated copies of stock so the card reflects an
+  // add-to-cart immediately without needing a full page reload.
+  const [specs, setSpecs] = useState(product.specifications)
+  const [productQty, setProductQty] = useState(product.quantity)
+
+  const hasSpecs = specs && specs.length > 0
 
   const allColors = useMemo(() => {
     if (!hasSpecs) return []
-    const colors = new Set(product.specifications!.map(s => s.color).filter(Boolean) as string[])
+    const colors = new Set(specs!.map(s => s.color).filter(Boolean) as string[])
     return Array.from(colors)
-  }, [product.specifications, hasSpecs])
+  }, [specs, hasSpecs])
 
   const allSizes = useMemo(() => {
     if (!hasSpecs) return []
-    const sizes = new Set(product.specifications!.map(s => s.size).filter(Boolean) as string[])
+    const sizes = new Set(specs!.map(s => s.size).filter(Boolean) as string[])
     return Array.from(sizes)
-  }, [product.specifications, hasSpecs])
+  }, [specs, hasSpecs])
 
   const [selectedColor, setSelectedColor] = useState<string | null>(() => {
     if (!product.specifications || product.specifications.length === 0) return null
@@ -84,20 +89,20 @@ export function ProductCard({ product }: { product: SerializedProduct }) {
 
   const matchingSpec = useMemo(() => {
     if (!hasSpecs) return null
-    return product.specifications!.find(
+    return specs!.find(
       s => (s.color === selectedColor || (!s.color && !selectedColor)) &&
         (s.size === selectedSize || (!s.size && !selectedSize))
     ) || null
-  }, [product.specifications, hasSpecs, selectedColor, selectedSize])
+  }, [specs, hasSpecs, selectedColor, selectedSize])
 
   const currentPrice = matchingSpec?.price ? matchingSpec.price : product.price
 
   const totalStock = hasSpecs
-    ? product.specifications!.reduce((sum, spec) => sum + spec.quantity, 0)
-    : product.quantity
+    ? specs!.reduce((sum, spec) => sum + spec.quantity, 0)
+    : productQty
 
   const isTotalOutOfStock = totalStock === 0
-  const maxAllowedQty = hasSpecs ? (matchingSpec?.quantity || 0) : product.quantity
+  const maxAllowedQty = hasSpecs ? (matchingSpec?.quantity || 0) : productQty
   const isSelectionOutOfStock = hasSpecs && maxAllowedQty === 0
 
   const displayImage = matchingSpec?.imageUrl || product.images[0]?.url
@@ -108,6 +113,7 @@ export function ProductCard({ product }: { product: SerializedProduct }) {
     try {
       await addItem({
         productId: product.id,
+        specificationId: matchingSpec?.id,
         name: product.name,
         price: currentPrice,
         imageUrl: displayImage ?? '',
@@ -115,6 +121,14 @@ export function ProductCard({ product }: { product: SerializedProduct }) {
         color: selectedColor || undefined,
         size: selectedSize || undefined,
       })
+      // Reflect the stock deduction immediately — the server already deducted
+      // it, this just keeps the card in sync without a page reload.
+      if (hasSpecs && matchingSpec) {
+        const specId = matchingSpec.id
+        setSpecs(prev => prev!.map(s => s.id === specId ? { ...s, quantity: s.quantity - displayedQty } : s))
+      } else {
+        setProductQty(prev => prev - displayedQty)
+      }
       setQty(1)
       toast.success('Added to cart!')
     } catch (error) {
@@ -126,17 +140,17 @@ export function ProductCard({ product }: { product: SerializedProduct }) {
   const isOptionInStock = (type: 'color' | 'size', value: string) => {
     if (!hasSpecs) return true
     if (type === 'color') {
-      const specs = product.specifications!.filter(s => s.color === value && (selectedSize ? s.size === selectedSize : true))
-      if (specs.length === 0) return product.specifications!.some(s => s.color === value && s.quantity > 0)
-      return specs.some(s => s.quantity > 0)
+      const matches = specs!.filter(s => s.color === value && (selectedSize ? s.size === selectedSize : true))
+      if (matches.length === 0) return specs!.some(s => s.color === value && s.quantity > 0)
+      return matches.some(s => s.quantity > 0)
     } else {
-      const specs = product.specifications!.filter(s => s.size === value && (selectedColor ? s.color === selectedColor : true))
-      if (specs.length === 0) return product.specifications!.some(s => s.size === value && s.quantity > 0)
-      return specs.some(s => s.quantity > 0)
+      const matches = specs!.filter(s => s.size === value && (selectedColor ? s.color === selectedColor : true))
+      if (matches.length === 0) return specs!.some(s => s.size === value && s.quantity > 0)
+      return matches.some(s => s.quantity > 0)
     }
   }
 
-  const stockCount = hasSpecs ? (matchingSpec?.quantity ?? 0) : product.quantity
+  const stockCount = hasSpecs ? (matchingSpec?.quantity ?? 0) : productQty
 
   return (
     <div className="w-full bg-white rounded-lg overflow-hidden flex flex-col border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-200">
@@ -173,7 +187,7 @@ export function ProductCard({ product }: { product: SerializedProduct }) {
         <div className="flex items-baseline gap-1">
           <span className="text-sm text-gray-600">Price:</span>
           <span className="text-sm font-bold text-blue-600">
-            Rs. {currentPrice.toLocaleString()}
+            Rs {currentPrice.toLocaleString()}
           </span>
         </div>
 

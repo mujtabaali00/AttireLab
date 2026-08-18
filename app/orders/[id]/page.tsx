@@ -27,7 +27,8 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
       user: true,
       items: {
         include: {
-          product: { include: { images: true } }
+          product: { include: { images: true } },
+          specification: true
         }
       }
     }
@@ -59,7 +60,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
 
       {/* Summary grid */}
       <div className="bg-white border-y border-gray-100 py-4 mb-6">
-        <div className="flex flex-wrap items-center justify-between gap-6 px-2">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-6 px-2">
           <div className="flex flex-col gap-1">
             <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Date</span>
             <span className="text-sm font-semibold text-gray-900">
@@ -80,7 +81,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
           </div>
           <div className="flex flex-col gap-1">
             <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Amount</span>
-            <span className="text-sm font-semibold text-gray-900">${Number(order.total).toLocaleString()}</span>
+            <span className="text-sm font-semibold text-gray-900">Rs {Number(order.total).toLocaleString()}</span>
           </div>
         </div>
       </div>
@@ -95,8 +96,8 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
             {order.items.map(item => (
               <div key={item.id} className="flex items-start gap-3 px-5 py-4">
                 <div className="relative w-12 h-12 bg-gray-50 rounded-lg overflow-hidden shrink-0">
-                  {item.product.images[0]?.url ? (
-                    <Image src={item.product.images[0].url} alt={item.productName} fill className="object-cover" sizes="48px" />
+                  {item.specification?.imageUrl || item.product.images[0]?.url ? (
+                    <Image src={item.specification?.imageUrl || item.product.images[0].url} alt={item.productName} fill className="object-cover" sizes="48px" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
                       <Package className="w-5 h-5 text-gray-300" />

@@ -7,12 +7,12 @@ import { ProductStatus } from '@prisma/client'
 interface CartItemInput {
   productId: string
   quantity: number
-  color?: string
-  size?: string
+  specificationId?: string | null
 }
 
 interface OrderItemPayload {
   productId: string
+  specificationId: string | null
   productName: string
   unitPrice: number
   quantity: number
@@ -54,10 +54,9 @@ export async function POST(req: Request) {
     }
 
     for (const item of items) {
-      const cartItem = userCart.items.find(i => 
-        i.productId === item.productId && 
-        i.color === (item.color || null) && 
-        i.size === (item.size || null)
+      const cartItem = userCart.items.find(i =>
+        i.productId === item.productId &&
+        i.specificationId === (item.specificationId || null)
       )
       if (!cartItem || cartItem.quantity < item.quantity) {
         return NextResponse.json({ error: `Please refresh your cart. Some items were not properly reserved.` }, { status: 400 })
@@ -83,27 +82,30 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: `Product not found or unavailable: ${item.productId}` }, { status: 404 })
       }
 
-      // Determine price based on specifications — stock already reserved in cart
+      // Determine price/variant based on specificationId — stock already reserved in cart
       let itemPrice = Number(product.price)
+      let color: string | null = null
+      let size: string | null = null
 
-      if (item.color || item.size) {
-        const spec = product.specifications.find(
-          s => (s.color === item.color || (!s.color && !item.color)) &&
-               (s.size === item.size || (!s.size && !item.size))
-        )
-        if (spec) {
-          itemPrice = spec.price ? Number(spec.price) : itemPrice
+      if (item.specificationId) {
+        const spec = product.specifications.find(s => s.id === item.specificationId)
+        if (!spec) {
+          return NextResponse.json({ error: `Product variant is no longer available` }, { status: 404 })
         }
+        itemPrice = spec.price ? Number(spec.price) : itemPrice
+        color = spec.color
+        size = spec.size
       }
 
       subtotal += itemPrice * item.quantity
       orderItemsData.push({
         productId: product.id,
+        specificationId: item.specificationId || null,
         productName: product.name,
         unitPrice: itemPrice,
         quantity: item.quantity,
-        color: item.color || null,
-        size: item.size || null,
+        color,
+        size,
       })
     }
 
@@ -118,8 +120,7 @@ export async function POST(req: Request) {
           where: {
             cartId: userCart.id,
             productId: item.productId,
-            color: item.color || null,
-            size: item.size || null
+            specificationId: item.specificationId || null
           }
         })
       }

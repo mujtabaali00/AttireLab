@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
-import { ArrowLeft, Trash2, Plus, Minus, X, ShoppingBag } from 'lucide-react'
+import { ArrowLeft, Trash2, Plus, Minus, X, ShoppingBag, CheckCircle } from 'lucide-react'
 import { useCartStore } from '@/lib/store/cart.store'
 import { useSession } from 'next-auth/react'
 import { toast } from 'react-hot-toast'
@@ -21,7 +21,7 @@ export default function CartPage() {
   const [address, setAddress] = useState('')
   const [recentAddresses, setRecentAddresses] = useState<string[]>([])
   const [isPlacingOrder, setIsPlacingOrder] = useState(false)
-  const [toastMessage, setToastMessage] = useState('')
+  const [placedOrderId, setPlacedOrderId] = useState<string | null>(null)
   const [timeLeft, setTimeLeft] = useState<string | null>(null)
 
   useEffect(() => { setMounted(true) }, [])
@@ -110,7 +110,7 @@ export default function CartPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          items: items.map(i => ({ productId: i.productId, quantity: i.quantity, color: i.color, size: i.size })),
+          items: items.map(i => ({ productId: i.productId, specificationId: i.specificationId, quantity: i.quantity })),
           shippingAddress: { address },
         }),
       })
@@ -127,9 +127,8 @@ export default function CartPage() {
       setShowAddressModal(false)
       const data = await res.json()
       const orderId = data.data?.id
-      
-      setToastMessage('Order placed successfully! Redirecting to your order details...')
-      setTimeout(() => { router.push(`/orders/${orderId || ''}`) }, 2000)
+
+      setPlacedOrderId(orderId || null)
     } catch (error: unknown) {
       const msg = error instanceof Error ? error.message : 'An error occurred'
       toast.error(msg)
@@ -138,7 +137,35 @@ export default function CartPage() {
     }
   }
 
-  if (items.length === 0 && !toastMessage) {
+  if (placedOrderId) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center p-4">
+        <div className="bg-white rounded-xl p-6 w-full max-w-sm text-center shadow-xl border border-gray-100">
+          <div className="mx-auto w-14 h-14 rounded-full bg-green-100 flex items-center justify-center mb-4">
+            <CheckCircle className="w-8 h-8 text-green-600" />
+          </div>
+          <h3 className="text-lg font-semibold text-gray-900 mb-1">Order placed successfully!</h3>
+          <p className="text-sm text-gray-500 mb-6">We&apos;ve received your order and will start processing it right away.</p>
+          <div className="flex flex-col gap-2">
+            <button
+              onClick={() => router.push(`/orders/${placedOrderId}`)}
+              className="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2.5 rounded-lg text-sm transition-colors"
+            >
+              View Order Details
+            </button>
+            <button
+              onClick={() => router.push('/')}
+              className="w-full border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium py-2.5 rounded-lg text-sm transition-colors"
+            >
+              Return to Home
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (items.length === 0) {
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center gap-4 px-4">
         <ShoppingBag className="w-16 h-16 text-gray-200" />
@@ -153,17 +180,7 @@ export default function CartPage() {
 
   return (
     <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8 relative">
-      {/* Success Toast */}
-      {toastMessage && (
-        <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 bg-green-100 text-green-800 px-4 py-2.5 rounded-lg shadow-md flex items-center gap-3 text-sm font-medium max-w-[90vw]">
-          <span>{toastMessage}</span>
-          <button onClick={() => setToastMessage('')} className="text-green-700 shrink-0">
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-      )}
-
-      <div className="p-4 sm:p-6 lg:p-8">
+      <div>
         {/* Title & Timer */}
       <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <Link href="/" className="inline-flex items-center text-blue-500 hover:text-blue-600 font-medium text-[28px] tracking-tight transition-colors">
@@ -189,10 +206,54 @@ export default function CartPage() {
           </div>
         </div>
 
-        {/* Table */}
-        <div className="overflow-x-auto -mx-4 sm:mx-0">
-          <div className="min-w-[480px] px-4 sm:px-0">
-            <table className="w-full text-left border-collapse">
+        {/* Mobile: stacked cards */}
+        <div className="sm:hidden space-y-3">
+          {items.map(item => (
+            <div key={item.id} className="border border-gray-200 rounded-xl p-3 flex gap-3">
+              <div className="relative w-14 h-14 bg-gray-50 rounded-lg overflow-hidden shrink-0">
+                {item.imageUrl ? (
+                  <Image src={item.imageUrl} alt={item.name} fill className="object-cover" sizes="56px" />
+                ) : <div className="w-full h-full bg-gray-200" />}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-start justify-between gap-2">
+                  <p className="text-sm font-medium text-gray-800 line-clamp-2 leading-tight">{item.name}</p>
+                  <button onClick={() => setItemToDelete(item.id)} className="text-red-400 hover:text-red-600 p-1 -mr-1 -mt-1 shrink-0">
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+                {(item.color || item.size) && (
+                  <p className="text-xs text-gray-500 mt-1 capitalize">
+                    {[item.color && `Color: ${item.color}`, item.size && `Size: ${item.size.toUpperCase()}`].filter(Boolean).join(' · ')}
+                  </p>
+                )}
+                <div className="flex items-center justify-between mt-2">
+                  <div className="flex items-center border border-gray-200 rounded-lg bg-white">
+                    <button onClick={() => item.quantity <= 1 ? setItemToDelete(item.id) : handleQuantityChange(item.id, item.quantity - 1)} className="p-1.5 text-blue-500 hover:bg-blue-50 rounded-l-lg transition-colors">
+                      <Minus className="w-3 h-3" />
+                    </button>
+                    <span className="w-7 text-center text-xs font-semibold text-gray-900">
+                      {String(item.quantity).padStart(2, '0')}
+                    </span>
+                    <button onClick={() => handleQuantityChange(item.id, item.quantity + 1)} className="p-1.5 text-blue-500 hover:bg-blue-50 rounded-r-lg transition-colors">
+                      <Plus className="w-3 h-3" />
+                    </button>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-sm font-semibold text-gray-900">Rs {(item.price * item.quantity).toLocaleString()}</span>
+                    {item.quantity > 1 && (
+                      <p className="text-[11px] text-gray-400">Rs {item.price.toLocaleString()} each</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* sm+: table */}
+        <div className="hidden sm:block overflow-x-auto">
+          <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="border-b border-gray-200 text-xs text-gray-400 bg-gray-50/50">
                   <th className="pl-6 py-3 font-medium">Product</th>
@@ -200,7 +261,7 @@ export default function CartPage() {
                   <th className="py-3 font-medium text-center">Size</th>
                   <th className="py-3 font-medium text-center w-28">Qty</th>
                   <th className="py-3 font-medium text-center">Price</th>
-                  <th className="py-3 font-medium text-center">Total Price</th>
+                  <th className="py-3 font-medium text-center whitespace-nowrap">Total Price</th>
                   <th className="py-3 font-medium text-center w-16">Actions</th>
                 </tr>
               </thead>
@@ -238,7 +299,7 @@ export default function CartPage() {
                     </td>
                     <td className="py-4">
                       <div className="flex items-center justify-center border border-gray-200 rounded-lg w-fit mx-auto bg-white">
-                        <button onClick={() => handleQuantityChange(item.id, item.quantity - 1)} className="p-1.5 text-blue-500 hover:bg-blue-50 rounded-l-lg transition-colors">
+                        <button onClick={() => item.quantity <= 1 ? setItemToDelete(item.id) : handleQuantityChange(item.id, item.quantity - 1)} className="p-1.5 text-blue-500 hover:bg-blue-50 rounded-l-lg transition-colors">
                           <Minus className="w-3 h-3" />
                         </button>
                         <span className="w-7 text-center text-xs font-semibold text-gray-900">
@@ -249,11 +310,11 @@ export default function CartPage() {
                         </button>
                       </div>
                     </td>
-                    <td className="py-4 text-center text-gray-600">
-                      ${item.price.toFixed(2)}
+                    <td className="py-4 text-center text-gray-600 whitespace-nowrap">
+                      Rs {item.price.toLocaleString()}
                     </td>
-                    <td className="py-4 text-center font-semibold text-gray-900">
-                      ${(item.price * item.quantity).toFixed(2)}
+                    <td className="py-4 text-center font-semibold text-gray-900 whitespace-nowrap">
+                      Rs {(item.price * item.quantity).toLocaleString()}
                     </td>
                     <td className="py-4 text-center">
                       <button onClick={() => setItemToDelete(item.id)} className="text-red-400 hover:text-red-600 p-1.5 rounded-md hover:bg-red-50 transition-colors">
@@ -263,8 +324,7 @@ export default function CartPage() {
                   </tr>
                 ))}
               </tbody>
-            </table>
-          </div>
+          </table>
         </div>
 
         {/* Totals + Checkout */}
@@ -272,15 +332,15 @@ export default function CartPage() {
           <div className="w-full sm:w-64 space-y-2">
             <div className="flex justify-between text-sm text-gray-500">
               <span>Sub Total:</span>
-              <span className="font-semibold text-gray-900">${subtotal.toFixed(2)}</span>
+              <span className="font-semibold text-gray-900">Rs {subtotal.toLocaleString()}</span>
             </div>
             <div className="flex justify-between text-sm text-gray-500">
               <span>Tax (10%):</span>
-              <span className="font-semibold text-gray-900">${tax.toFixed(2)}</span>
+              <span className="font-semibold text-gray-900">Rs {tax.toLocaleString()}</span>
             </div>
             <div className="flex justify-between text-sm font-bold text-gray-900 pt-2 border-t border-gray-100">
               <span>Total:</span>
-              <span>${total.toFixed(2)}</span>
+              <span>Rs {total.toLocaleString()}</span>
             </div>
             <button
               onClick={handlePlaceOrderClick}

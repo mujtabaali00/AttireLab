@@ -3,6 +3,7 @@ import { create } from 'zustand'
 export interface CartItem {
   id: string
   productId: string
+  specificationId?: string
   name: string
   price: number
   imageUrl: string
@@ -26,23 +27,55 @@ interface CartStore {
   getSubtotal: () => number
 }
 
+// Shape of the JSON payload returned by /api/cart (getCart() in lib/cart.ts,
+// serialized over the wire — Decimal fields arrive as strings, dates as ISO strings).
+interface CartApiSpecification {
+  id: string
+  color: string | null
+  size: string | null
+  price: string | number | null
+  imageUrl: string | null
+}
+
+interface CartApiProduct {
+  status: string
+  name: string
+  price: string | number
+  images: { url: string }[]
+}
+
+interface CartApiItem {
+  id: string
+  productId: string
+  specificationId: string | null
+  quantity: number
+  product: CartApiProduct
+  specification: CartApiSpecification | null
+}
+
+interface CartApiResponse {
+  items: CartApiItem[]
+  expiresAt: string | null
+}
+
 // Convert DB Cart to our frontend state format
-const mapDbCartToState = (dbCart: any): { items: CartItem[], expiresAt: string | null } => {
+const mapDbCartToState = (dbCart: CartApiResponse | null): { items: CartItem[], expiresAt: string | null } => {
   if (!dbCart) return { items: [], expiresAt: null }
-  
+
   const items = dbCart.items
-    .filter((item: any) => item.product?.status === 'ACTIVE')
-    .map((item: any) => ({
-    id: item.id,
-    productId: item.productId,
-    name: item.product.name,
-    price: Number(item.product.specifications?.find((s: any) => s.color === item.color && s.size === item.size)?.price || item.product.price),
-    imageUrl: item.product.specifications?.find((s: any) => s.color === item.color && s.size === item.size)?.imageUrl || item.product.images[0]?.url || '',
-    quantity: item.quantity,
-    maxStock: 99, // Backend enforces actual stock limits now
-    color: item.color || undefined,
-    size: item.size || undefined,
-  }))
+    .filter(item => item.product?.status === 'ACTIVE')
+    .map(item => ({
+      id: item.id,
+      productId: item.productId,
+      specificationId: item.specificationId || undefined,
+      name: item.product.name,
+      price: Number(item.specification?.price ?? item.product.price),
+      imageUrl: item.specification?.imageUrl || item.product.images[0]?.url || '',
+      quantity: item.quantity,
+      maxStock: 99, // Backend enforces actual stock limits now
+      color: item.specification?.color || undefined,
+      size: item.specification?.size || undefined,
+    }))
 
   return { items, expiresAt: dbCart.expiresAt }
 }
@@ -79,8 +112,7 @@ export const useCartStore = create<CartStore>((set, get) => ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           productId: item.productId,
-          color: item.color,
-          size: item.size,
+          specificationId: item.specificationId,
           quantity: item.quantity,
         }),
       })
@@ -89,7 +121,7 @@ export const useCartStore = create<CartStore>((set, get) => ({
       
       const { items, expiresAt } = mapDbCartToState(data.data)
       set({ items, expiresAt })
-    } catch (error: any) {
+    } catch (error) {
       throw error
     } finally {
       set({ isLoading: false })
@@ -105,7 +137,7 @@ export const useCartStore = create<CartStore>((set, get) => ({
       
       const { items, expiresAt } = mapDbCartToState(data.data)
       set({ items, expiresAt })
-    } catch (error: any) {
+    } catch (error) {
       throw error
     } finally {
       set({ isLoading: false })
@@ -125,7 +157,7 @@ export const useCartStore = create<CartStore>((set, get) => ({
       
       const { items, expiresAt } = mapDbCartToState(data.data)
       set({ items, expiresAt })
-    } catch (error: any) {
+    } catch (error) {
       throw error
     } finally {
       set({ isLoading: false })
@@ -141,7 +173,7 @@ export const useCartStore = create<CartStore>((set, get) => ({
       
       const { items, expiresAt } = mapDbCartToState(data.data)
       set({ items, expiresAt })
-    } catch (error: any) {
+    } catch (error) {
       throw error
     } finally {
       set({ isLoading: false })
