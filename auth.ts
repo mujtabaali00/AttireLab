@@ -32,10 +32,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       credentials: {
         email: {},
         password: {},
+        rememberMe: {},
       },
       async authorize(credentials) {
         try {
-          const { email, password, rememberMe } = await loginSchema.parseAsync(credentials)
+          // NextAuth always sends `credentials` as a URL-encoded form POST, so
+          // rememberMe arrives as the string "true"/"false", not a real boolean.
+          const { email, password, rememberMe } = await loginSchema.parseAsync({
+            ...credentials,
+            rememberMe: credentials?.rememberMe === true || credentials?.rememberMe === 'true',
+          })
 
           const user = await db.user.findUnique({
             where: { email }

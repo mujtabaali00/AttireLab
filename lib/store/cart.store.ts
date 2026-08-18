@@ -3,6 +3,7 @@ import { create } from 'zustand'
 export interface CartItem {
   id: string
   productId: string
+  specificationId?: string
   name: string
   price: number
   imageUrl: string
@@ -29,6 +30,7 @@ interface CartStore {
 // Shape of the JSON payload returned by /api/cart (getCart() in lib/cart.ts,
 // serialized over the wire — Decimal fields arrive as strings, dates as ISO strings).
 interface CartApiSpecification {
+  id: string
   color: string | null
   size: string | null
   price: string | number | null
@@ -40,16 +42,15 @@ interface CartApiProduct {
   name: string
   price: string | number
   images: { url: string }[]
-  specifications: CartApiSpecification[]
 }
 
 interface CartApiItem {
   id: string
   productId: string
+  specificationId: string | null
   quantity: number
-  color: string | null
-  size: string | null
   product: CartApiProduct
+  specification: CartApiSpecification | null
 }
 
 interface CartApiResponse {
@@ -63,20 +64,18 @@ const mapDbCartToState = (dbCart: CartApiResponse | null): { items: CartItem[], 
 
   const items = dbCart.items
     .filter(item => item.product?.status === 'ACTIVE')
-    .map(item => {
-      const matchingSpec = item.product.specifications?.find(s => s.color === item.color && s.size === item.size)
-      return {
-        id: item.id,
-        productId: item.productId,
-        name: item.product.name,
-        price: Number(matchingSpec?.price ?? item.product.price),
-        imageUrl: matchingSpec?.imageUrl || item.product.images[0]?.url || '',
-        quantity: item.quantity,
-        maxStock: 99, // Backend enforces actual stock limits now
-        color: item.color || undefined,
-        size: item.size || undefined,
-      }
-    })
+    .map(item => ({
+      id: item.id,
+      productId: item.productId,
+      specificationId: item.specificationId || undefined,
+      name: item.product.name,
+      price: Number(item.specification?.price ?? item.product.price),
+      imageUrl: item.specification?.imageUrl || item.product.images[0]?.url || '',
+      quantity: item.quantity,
+      maxStock: 99, // Backend enforces actual stock limits now
+      color: item.specification?.color || undefined,
+      size: item.specification?.size || undefined,
+    }))
 
   return { items, expiresAt: dbCart.expiresAt }
 }
@@ -113,8 +112,7 @@ export const useCartStore = create<CartStore>((set, get) => ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           productId: item.productId,
-          color: item.color,
-          size: item.size,
+          specificationId: item.specificationId,
           quantity: item.quantity,
         }),
       })

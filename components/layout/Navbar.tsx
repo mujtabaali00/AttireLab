@@ -45,12 +45,32 @@ function NotifIcon({ type }: { type: string }) {
   )
 }
 
+function LogoutConfirmModal({ onCancel, onConfirm }: { onCancel: () => void; onConfirm: () => void }) {
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl p-6 w-full max-w-xs text-center shadow-xl">
+        <h3 className="text-lg font-semibold text-gray-900 mb-1">Log out?</h3>
+        <p className="text-sm text-gray-500 mb-5">Are you sure you want to log out of your account?</p>
+        <div className="flex justify-center gap-3">
+          <button onClick={onCancel} className="px-5 py-2 border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors">
+            Stay
+          </button>
+          <button onClick={onConfirm} className="px-5 py-2 bg-red-500 text-white rounded-lg text-sm font-medium hover:bg-red-600 transition-colors">
+            Logout
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function Navbar() {
   const [mounted, setMounted] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const [notifOpen, setNotifOpen] = useState(false)
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [notifTab, setNotifTab] = useState<'unread' | 'all'>('unread')
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
 
   const menuRef = useRef<HTMLDivElement>(null)
   const notifRef = useRef<HTMLDivElement>(null)
@@ -119,6 +139,7 @@ export function Navbar() {
   // ── Admin navbar (no cart, user avatar top-right) ──
   if (isAdminRoute) {
     return (
+      <>
       <nav className="bg-white border-b border-gray-200 h-14 flex items-center px-6 sticky top-0 z-40">
         {/* Left: logo — kept in sync with sidebar */}
         <Link href="/admin/products" className="text-sm font-bold text-gray-900 tracking-tight">
@@ -142,7 +163,7 @@ export function Navbar() {
               </button>
 
               {notifOpen && (
-                <div className="absolute right-0 top-full mt-2 w-[340px] bg-white rounded-xl border border-gray-200 shadow-xl overflow-hidden z-50">
+                <div className="fixed left-4 right-4 top-16 sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-2 sm:w-[340px] bg-white rounded-xl border border-gray-200 shadow-xl overflow-hidden z-50">
                   <div className="flex items-center justify-between px-4 pt-4 pb-2">
                     <h3 className="text-base font-bold text-gray-900">Notifications</h3>
                     {unreadCount > 0 && (
@@ -199,7 +220,7 @@ export function Navbar() {
                     <p className="text-xs text-gray-500 truncate">{session.user?.email}</p>
                   </div>
                   <button
-                    onClick={() => { setMenuOpen(false); signOut({ callbackUrl: '/auth/login' }) }}
+                    onClick={() => { setMenuOpen(false); setShowLogoutConfirm(true) }}
                     className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-500 font-medium hover:bg-red-50 transition-colors"
                   >
                     <LogOut className="w-4 h-4" /> Logout
@@ -210,11 +231,19 @@ export function Navbar() {
           )}
         </div>
       </nav>
+      {showLogoutConfirm && (
+        <LogoutConfirmModal
+          onCancel={() => setShowLogoutConfirm(false)}
+          onConfirm={() => signOut({ callbackUrl: '/auth/login' })}
+        />
+      )}
+      </>
     )
   }
 
   // ── User navbar ──
   return (
+    <>
     <nav className="bg-white border-b border-gray-200 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-14">
@@ -249,7 +278,7 @@ export function Navbar() {
                 </button>
 
                 {notifOpen && (
-                  <div className="absolute right-0 top-full mt-2 w-[340px] bg-white rounded-xl border border-gray-100 shadow-xl overflow-hidden z-50">
+                  <div className="fixed left-4 right-4 top-16 sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-2 sm:w-[340px] bg-white rounded-xl border border-gray-100 shadow-xl overflow-hidden z-50">
                     <div className="flex items-center justify-between px-4 pt-4 pb-2">
                       <h3 className="text-base font-bold text-gray-900">Notifications</h3>
                       {unreadCount > 0 && (
@@ -319,7 +348,7 @@ export function Navbar() {
                     <Link href="/orders" onClick={() => setMenuOpen(false)} className="flex items-center gap-2 px-4 py-2 text-sm text-blue-500 font-medium hover:bg-blue-50 transition-colors">
                       <Package className="w-4 h-4" /> My Orders
                     </Link>
-                    <button onClick={() => { setMenuOpen(false); signOut({ callbackUrl: '/auth/login' }) }} className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-500 font-medium hover:bg-red-50 transition-colors">
+                    <button onClick={() => { setMenuOpen(false); setShowLogoutConfirm(true) }} className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-500 font-medium hover:bg-red-50 transition-colors">
                       <LogOut className="w-4 h-4" /> Logout
                     </button>
                   </div>
@@ -337,5 +366,12 @@ export function Navbar() {
         </div>
       </div>
     </nav>
+    {showLogoutConfirm && (
+      <LogoutConfirmModal
+        onCancel={() => setShowLogoutConfirm(false)}
+        onConfirm={() => signOut({ callbackUrl: '/auth/login' })}
+      />
+    )}
+    </>
   )
 }

@@ -108,6 +108,7 @@ export function ProductCard({ product }: { product: SerializedProduct }) {
     try {
       await addItem({
         productId: product.id,
+        specificationId: matchingSpec?.id,
         name: product.name,
         price: currentPrice,
         imageUrl: displayImage ?? '',

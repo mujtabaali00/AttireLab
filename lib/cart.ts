@@ -4,6 +4,17 @@ import { auth } from '@/auth'
 import { APP_CONSTANTS } from './constants'
 import { v4 as uuidv4 } from 'uuid'
 
+const CART_INCLUDE = {
+  items: {
+    include: {
+      product: {
+        include: { images: true }
+      },
+      specification: true
+    }
+  }
+} as const
+
 // Clean up expired carts and restore stock globally
 export async function releaseExpiredCarts() {
   try {
@@ -17,20 +28,11 @@ export async function releaseExpiredCarts() {
     await db.$transaction(async (tx) => {
       for (const cart of expiredCarts) {
         for (const item of cart.items) {
-          if (item.color || item.size) {
-            const spec = await tx.productSpecification.findFirst({
-              where: {
-                productId: item.productId,
-                color: item.color || null,
-                size: item.size || null,
-              },
+          if (item.specificationId) {
+            await tx.productSpecification.update({
+              where: { id: item.specificationId },
+              data: { quantity: { increment: item.quantity } },
             })
-            if (spec) {
-              await tx.productSpecification.update({
-                where: { id: spec.id },
-                data: { quantity: { increment: item.quantity } },
-              })
-            }
           }
           // Always restore total product stock
           await tx.product.update({
@@ -63,30 +65,14 @@ export async function getCart() {
     if (userId) {
       cart = await db.cart.findFirst({
         where: { userId },
-        include: {
-          items: {
-            include: {
-              product: {
-                include: { images: true, specifications: true }
-              }
-            }
-          }
-        },
+        include: CART_INCLUDE,
       })
 
       // Merge guest cart if user just logged in
       if (!cart && sessionId) {
         cart = await db.cart.findUnique({
           where: { sessionId },
-          include: {
-            items: {
-              include: {
-                product: {
-                  include: { images: true, specifications: true }
-                }
-              }
-            }
-          },
+          include: CART_INCLUDE,
         })
         if (cart) {
           await db.cart.update({
@@ -104,15 +90,7 @@ export async function getCart() {
             sessionId: null,
             expiresAt: new Date(Date.now() + APP_CONSTANTS.CART.EXPIRATION_HOURS * 60 * 60 * 1000),
           },
-          include: {
-            items: {
-              include: {
-                product: {
-                  include: { images: true, specifications: true }
-                }
-              }
-            }
-          },
+          include: CART_INCLUDE,
         })
       }
     }
@@ -135,15 +113,7 @@ export async function getCart() {
 
     cart = await db.cart.findUnique({
       where: { sessionId },
-      include: {
-        items: {
-          include: {
-            product: {
-              include: { images: true, specifications: true }
-            }
-          }
-        }
-      },
+      include: CART_INCLUDE,
     })
 
     if (!cart) {
@@ -153,15 +123,7 @@ export async function getCart() {
           sessionId,
           expiresAt: new Date(Date.now() + APP_CONSTANTS.CART.EXPIRATION_HOURS * 60 * 60 * 1000),
         },
-        include: {
-          items: {
-            include: {
-              product: {
-                include: { images: true, specifications: true }
-              }
-            }
-          }
-        },
+        include: CART_INCLUDE,
       })
     }
   }

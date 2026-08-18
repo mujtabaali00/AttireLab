@@ -57,11 +57,7 @@ export async function PATCH(req: NextRequest, { params }: RouteCtx) {
     const existing = await db.order.findUnique({
       where: { id },
       include: {
-        items: {
-          include: {
-            product: { include: { specifications: true } }
-          }
-        }
+        items: true
       }
     })
 
@@ -80,24 +76,11 @@ export async function PATCH(req: NextRequest, { params }: RouteCtx) {
 
       if (shouldRestoreStock) {
         for (const item of existing.items) {
-          // Find matching spec if color/size exist
-          if (item.color || item.size) {
-            const spec = item.product.specifications.find(
-              s =>
-                (s.color === item.color || (!s.color && !item.color)) &&
-                (s.size === item.size || (!s.size && !item.size))
-            )
-            if (spec) {
-              await tx.productSpecification.update({
-                where: { id: spec.id },
-                data: { quantity: { increment: item.quantity } }
-              })
-              await tx.product.update({
-                where: { id: item.productId },
-                data: { quantity: { increment: item.quantity } }
-              })
-              continue
-            }
+          if (item.specificationId) {
+            await tx.productSpecification.update({
+              where: { id: item.specificationId },
+              data: { quantity: { increment: item.quantity } }
+            })
           }
           await tx.product.update({
             where: { id: item.productId },

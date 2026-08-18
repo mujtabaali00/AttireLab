@@ -50,15 +50,15 @@ export function ProductList({ initialProducts, categories }: ProductListProps) {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <h2 className="text-2xl font-bold text-blue-600">Our Products</h2>
 
-        <div className="flex items-center gap-3">
-          {/* Search bar — matches screenshot exactly */}
-          <div className="relative">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+          {/* Search bar */}
+          <div className="relative flex-1 sm:flex-none">
             <input
               type="text"
               placeholder="Search products or categories..."
               value={search}
               onChange={e => setSearch(e.target.value)}
-              className="w-56 sm:w-72 rounded border border-gray-300 bg-white py-1.5 pl-3 pr-9 text-sm text-gray-700 outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-300 placeholder-gray-400"
+              className="w-full sm:w-72 rounded border border-gray-300 bg-white py-1.5 pl-3 pr-9 text-sm text-gray-700 outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-300 placeholder-gray-400"
             />
             <button
               type="button"
@@ -69,11 +69,11 @@ export function ProductList({ initialProducts, categories }: ProductListProps) {
           </div>
 
           {/* Sort dropdown */}
-          <div className="relative">
+          <div className="relative shrink-0">
             <select
               value={sortBy}
               onChange={e => setSortBy(e.target.value)}
-              className="appearance-none rounded border border-gray-300 bg-white py-1.5 pl-3 pr-8 text-sm font-medium text-gray-700 outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-300 cursor-pointer"
+              className="w-full sm:w-auto appearance-none rounded border border-gray-300 bg-white py-1.5 pl-3 pr-8 text-sm font-medium text-gray-700 outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-300 cursor-pointer"
             >
               {SORT_OPTIONS.map(o => (
                 <option key={o.value} value={o.value}>{o.label}</option>

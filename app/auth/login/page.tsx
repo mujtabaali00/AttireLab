@@ -168,12 +168,6 @@ export default function LoginPage() {
             Sign Up
           </Link>
         </div>
-        <div>
-          Are you an Admin?{" "}
-          <Link href="/auth/admin" className="text-gray-600 hover:underline font-medium">
-            Admin Login
-          </Link>
-        </div>
       </div>
     </div>
   )

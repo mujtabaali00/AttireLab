@@ -66,7 +66,7 @@ export default async function AdminOrdersPage() {
         <div className="bg-white p-5 rounded-xl border border-gray-100 shadow-sm flex items-center justify-between">
           <div>
             <p className="text-sm font-semibold text-gray-500 mb-1">Total Amount:</p>
-            <h2 className="text-2xl font-bold text-blue-600">${totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</h2>
+            <h2 className="text-2xl font-bold text-blue-600">Rs {totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</h2>
           </div>
           <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center">
             <DollarSign className="w-6 h-6 text-blue-500" />

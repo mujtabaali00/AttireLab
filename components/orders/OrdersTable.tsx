@@ -90,12 +90,12 @@ export function OrdersTable({ orders, isAdmin = false }: OrdersTableProps) {
               return (
                 <tr key={order.id} className="hover:bg-gray-50/50 transition-colors">
                   <td className="px-5 py-4 text-sm text-gray-600 whitespace-nowrap">{displayDate}</td>
-                  <td className="px-5 py-4 text-sm text-gray-600 font-mono whitespace-nowrap">${orderNum}</td>
+                  <td className="px-5 py-4 text-sm text-gray-600 font-mono whitespace-nowrap">#{orderNum}</td>
                   {isAdmin && (
                     <td className="px-5 py-4 text-sm text-gray-900 whitespace-nowrap">{order.userName}</td>
                   )}
                   <td className="px-5 py-4 text-sm text-gray-600 whitespace-nowrap">{order.itemsCount}</td>
-                  <td className="px-5 py-4 text-sm text-gray-600 whitespace-nowrap">${Number(order.total).toFixed(2)}</td>
+                  <td className="px-5 py-4 text-sm text-gray-600 whitespace-nowrap">Rs {Number(order.total).toLocaleString()}</td>
                   <td className="px-5 py-4 text-sm whitespace-nowrap">
                     {isAdmin ? (
                       <div className="flex items-center gap-2">

@@ -32,6 +32,12 @@ export const authConfig = {
         session.user.id = token.id as string
         session.user.role = (token.role as 'CUSTOMER' | 'ADMIN') || 'CUSTOMER'
       }
+      // Auth.js always reports `session.expires` as now + the static
+      // session.maxAge config, ignoring the JWT's real per-user `exp` set by
+      // our custom jwt.encode — override it here so clients see the true expiry.
+      if (typeof token.exp === 'number') {
+        session.expires = new Date(token.exp * 1000).toISOString() as typeof session.expires
+      }
       return session
     },
     async redirect({ url, baseUrl }) {
