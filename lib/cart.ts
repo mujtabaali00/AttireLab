@@ -42,7 +42,7 @@ export async function releaseExpiredCarts() {
         }
         await tx.cart.delete({ where: { id: cart.id } })
       }
-    })
+    }, { timeout: 15000, maxWait: 10000 })
   } catch (err) {
     // Non-fatal: log and continue
     console.error('[releaseExpiredCarts] error:', err)

@@ -229,7 +229,7 @@ export default function CartPage() {
                 )}
                 <div className="flex items-center justify-between mt-2">
                   <div className="flex items-center border border-gray-200 rounded-lg bg-white">
-                    <button onClick={() => handleQuantityChange(item.id, item.quantity - 1)} className="p-1.5 text-blue-500 hover:bg-blue-50 rounded-l-lg transition-colors">
+                    <button onClick={() => item.quantity <= 1 ? setItemToDelete(item.id) : handleQuantityChange(item.id, item.quantity - 1)} className="p-1.5 text-blue-500 hover:bg-blue-50 rounded-l-lg transition-colors">
                       <Minus className="w-3 h-3" />
                     </button>
                     <span className="w-7 text-center text-xs font-semibold text-gray-900">
@@ -299,7 +299,7 @@ export default function CartPage() {
                     </td>
                     <td className="py-4">
                       <div className="flex items-center justify-center border border-gray-200 rounded-lg w-fit mx-auto bg-white">
-                        <button onClick={() => handleQuantityChange(item.id, item.quantity - 1)} className="p-1.5 text-blue-500 hover:bg-blue-50 rounded-l-lg transition-colors">
+                        <button onClick={() => item.quantity <= 1 ? setItemToDelete(item.id) : handleQuantityChange(item.id, item.quantity - 1)} className="p-1.5 text-blue-500 hover:bg-blue-50 rounded-l-lg transition-colors">
                           <Minus className="w-3 h-3" />
                         </button>
                         <span className="w-7 text-center text-xs font-semibold text-gray-900">

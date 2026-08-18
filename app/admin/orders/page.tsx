@@ -1,14 +1,11 @@
-import { auth } from '@/auth'
 import { db } from '@/lib/db'
-import { redirect } from 'next/navigation'
 import { OrdersTable, OrderRow, DBOrderStatus } from '@/components/orders/OrdersTable'
 import { ClipboardList, Box, DollarSign } from 'lucide-react'
 
 export const metadata = { title: 'Manage Orders' }
 
+// Admin access is already enforced by middleware.ts + app/admin/layout.tsx.
 export default async function AdminOrdersPage() {
-  const session = await auth()
-  if (!session?.user || session.user.role !== 'ADMIN') redirect('/auth/login')
 
   const orders = await db.order.findMany({
     include: {

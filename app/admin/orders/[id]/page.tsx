@@ -1,6 +1,5 @@
-import { auth } from '@/auth'
 import { db } from '@/lib/db'
-import { redirect, notFound } from 'next/navigation'
+import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { ArrowLeft, Package } from 'lucide-react'
@@ -16,10 +15,9 @@ const statusStyles: Record<OrderStatus, { label: string; color: string }> = {
   CANCELLED:  { label: 'Cancelled',   color: 'bg-red-100 text-red-700 border-red-200' },
 }
 
+// Admin access is already enforced by middleware.ts + app/admin/layout.tsx.
 export default async function AdminOrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const session = await auth()
-  if (!session?.user || session.user.role !== 'ADMIN') redirect('/auth/login')
 
   const order = await db.order.findUnique({
     where: { id },
@@ -27,7 +25,8 @@ export default async function AdminOrderDetailPage({ params }: { params: Promise
       user: true,
       items: {
         include: {
-          product: { include: { images: true } }
+          product: { include: { images: true } },
+          specification: true
         }
       }
     }
@@ -95,8 +94,8 @@ export default async function AdminOrderDetailPage({ params }: { params: Promise
             {order.items.map(item => (
               <div key={item.id} className="flex items-start gap-3 px-5 py-4">
                 <div className="relative w-12 h-12 bg-gray-50 rounded-lg overflow-hidden shrink-0">
-                  {item.product.images[0]?.url ? (
-                    <Image src={item.product.images[0].url} alt={item.productName} fill className="object-cover" sizes="48px" />
+                  {item.specification?.imageUrl || item.product.images[0]?.url ? (
+                    <Image src={item.specification?.imageUrl || item.product.images[0].url} alt={item.productName} fill className="object-cover" sizes="48px" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
                       <Package className="w-5 h-5 text-gray-300" />

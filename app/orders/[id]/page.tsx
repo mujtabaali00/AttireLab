@@ -27,7 +27,8 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
       user: true,
       items: {
         include: {
-          product: { include: { images: true } }
+          product: { include: { images: true } },
+          specification: true
         }
       }
     }
@@ -95,8 +96,8 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
             {order.items.map(item => (
               <div key={item.id} className="flex items-start gap-3 px-5 py-4">
                 <div className="relative w-12 h-12 bg-gray-50 rounded-lg overflow-hidden shrink-0">
-                  {item.product.images[0]?.url ? (
-                    <Image src={item.product.images[0].url} alt={item.productName} fill className="object-cover" sizes="48px" />
+                  {item.specification?.imageUrl || item.product.images[0]?.url ? (
+                    <Image src={item.specification?.imageUrl || item.product.images[0].url} alt={item.productName} fill className="object-cover" sizes="48px" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
                       <Package className="w-5 h-5 text-gray-300" />

@@ -6,7 +6,7 @@ import { updateProductSchema } from '@/lib/validations/product.schema'
 import { serializeProduct } from '@/lib/product-serializer'
 import { logger } from '@/lib/logger'
 import { ZodError } from 'zod'
-import { ProductStatus } from '@prisma/client'
+import { Prisma, ProductStatus } from '@prisma/client'
 
 type RouteContext = { params: Promise<{ id: string }> }
 
@@ -108,6 +108,9 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
   } catch (error) {
     if (error instanceof ZodError) {
       return apiError('Validation failed', 400, error.flatten())
+    }
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+      return apiError('Two variants have the same color and size — each combination must be unique', 400)
     }
     logger.error({ error }, 'Failed to update product')
     return apiError('Failed to update product', 500)

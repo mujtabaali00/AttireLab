@@ -1,7 +1,8 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { Search, ChevronDown } from 'lucide-react'
+import Link from 'next/link'
+import { Search, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react'
 import { ProductCard, type SerializedProduct } from './ProductCard'
 
 interface Category {
@@ -13,6 +14,8 @@ interface Category {
 interface ProductListProps {
   initialProducts: SerializedProduct[]
   categories: Category[]
+  currentPage: number
+  totalPages: number
 }
 
 const SORT_OPTIONS = [
@@ -21,7 +24,7 @@ const SORT_OPTIONS = [
   { value: 'price_desc', label: 'Price: High → Low' },
 ]
 
-export function ProductList({ initialProducts, categories }: ProductListProps) {
+export function ProductList({ initialProducts, categories, currentPage, totalPages }: ProductListProps) {
   const [search, setSearch] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('all')
   const [sortBy, setSortBy] = useState('newest')
@@ -94,6 +97,37 @@ export function ProductList({ initialProducts, categories }: ProductListProps) {
           {filtered.map(product => (
             <ProductCard key={product.id} product={product} />
           ))}
+        </div>
+      )}
+
+      {/* Pagination — search/sort/filter above only apply within the current page */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-3 mt-8">
+          <Link
+            href={`/?page=${currentPage - 1}`}
+            aria-disabled={currentPage <= 1}
+            className={`flex items-center gap-1 px-3 py-1.5 text-sm font-medium rounded border transition-colors ${
+              currentPage <= 1
+                ? 'pointer-events-none opacity-40 border-gray-200 text-gray-400'
+                : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+            }`}
+          >
+            <ChevronLeft className="w-4 h-4" /> Previous
+          </Link>
+          <span className="text-sm text-gray-500 px-2">
+            Page {currentPage} of {totalPages}
+          </span>
+          <Link
+            href={`/?page=${currentPage + 1}`}
+            aria-disabled={currentPage >= totalPages}
+            className={`flex items-center gap-1 px-3 py-1.5 text-sm font-medium rounded border transition-colors ${
+              currentPage >= totalPages
+                ? 'pointer-events-none opacity-40 border-gray-200 text-gray-400'
+                : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+            }`}
+          >
+            Next <ChevronRight className="w-4 h-4" />
+          </Link>
         </div>
       )}
     </div>

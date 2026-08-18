@@ -19,7 +19,7 @@ export async function GET(_req: NextRequest, { params }: RouteCtx) {
       include: {
         user: { select: { name: true, email: true } },
         items: {
-          include: { product: { include: { images: true } } }
+          include: { product: { include: { images: true } }, specification: true }
         }
       }
     })
