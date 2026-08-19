@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { Package, Eye, Pencil, Trash2, Search } from 'lucide-react'
+import { Package, Pencil, Power, PowerOff, Search } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'react-hot-toast'
 import { Category } from '@prisma/client'
@@ -29,8 +29,8 @@ export function ProductsClientTable({
   categories: Category[]
 }) {
   const router = useRouter()
-  const [deletingId, setDeletingId] = useState<string | null>(null)
-  const [isDeleting, setIsDeleting] = useState(false)
+  const [togglingProduct, setTogglingProduct] = useState<{ id: string; name: string; nextStatus: 'ACTIVE' | 'INACTIVE' } | null>(null)
+  const [isToggling, setIsToggling] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('all')
   const [selectedStatus, setSelectedStatus] = useState('all')
@@ -54,23 +54,27 @@ export function ProductsClientTable({
     currentPage * itemsPerPage
   )
 
-  const confirmDelete = async () => {
-    if (!deletingId) return
-    setIsDeleting(true)
+  const confirmToggleStatus = async () => {
+    if (!togglingProduct) return
+    setIsToggling(true)
     try {
-      const res = await fetch(`/api/products/${deletingId}`, { method: 'DELETE' })
+      const res = await fetch(`/api/products/${togglingProduct.id}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: togglingProduct.nextStatus }),
+      })
       if (res.ok) {
-        toast.success('Product removed')
+        toast.success(togglingProduct.nextStatus === 'ACTIVE' ? 'Product activated' : 'Product deactivated')
         router.refresh()
       } else {
         const data = await res.json().catch(() => ({}))
-        toast.error(data.error || 'Failed to delete product')
+        toast.error(data.error || 'Failed to update product status')
       }
     } catch {
-      toast.error('An error occurred while deleting')
+      toast.error('An error occurred while updating the product')
     } finally {
-      setIsDeleting(false)
-      setDeletingId(null)
+      setIsToggling(false)
+      setTogglingProduct(null)
     }
   }
 
@@ -205,14 +209,24 @@ export function ProductsClientTable({
                           >
                             <Pencil className="w-4 h-4" />
                           </Link>
-                          {/* Delete — trash icon */}
-                          <button
-                            onClick={() => setDeletingId(product.id)}
-                            className="p-1.5 text-red-500 hover:bg-red-50 rounded transition-colors"
-                            title="Delete Product"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                          {/* Activate/Deactivate — soft delete toggle, product is never hard-deleted */}
+                          {product.status === 'ACTIVE' ? (
+                            <button
+                              onClick={() => setTogglingProduct({ id: product.id, name: product.name, nextStatus: 'INACTIVE' })}
+                              className="p-1.5 text-red-500 hover:bg-red-50 rounded transition-colors"
+                              title="Deactivate Product"
+                            >
+                              <PowerOff className="w-4 h-4" />
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => setTogglingProduct({ id: product.id, name: product.name, nextStatus: 'ACTIVE' })}
+                              className="p-1.5 text-green-600 hover:bg-green-50 rounded transition-colors"
+                              title="Activate Product"
+                            >
+                              <Power className="w-4 h-4" />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -256,34 +270,37 @@ export function ProductsClientTable({
         )}
       </div>
 
-      {/* Delete confirmation modal */}
-      {/* Delete Confirmation Modal */}
-      {deletingId && (
+      {/* Activate/Deactivate confirmation modal */}
+      {togglingProduct && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl p-6 w-full max-w-xs text-center shadow-xl">
-            <h3 className="text-lg font-semibold text-blue-500 mb-1">Remove Product</h3>
+            <h3 className="text-lg font-semibold text-blue-500 mb-1">
+              {togglingProduct.nextStatus === 'ACTIVE' ? 'Activate Product' : 'Deactivate Product'}
+            </h3>
             <div className="flex justify-center my-4">
               <svg className="w-14 h-14 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
               </svg>
             </div>
             <p className="text-sm font-medium text-gray-800 mb-5">
-              Are you sure you want to remove this product?
+              {togglingProduct.nextStatus === 'ACTIVE'
+                ? <>Make <strong>{togglingProduct.name}</strong> visible to customers again?</>
+                : <><strong>{togglingProduct.name}</strong> will be hidden from customers. You can activate it again anytime.</>}
             </p>
             <div className="flex justify-center gap-4">
               <button
-                onClick={() => setDeletingId(null)}
-                disabled={isDeleting}
+                onClick={() => setTogglingProduct(null)}
+                disabled={isToggling}
                 className="px-6 py-2 border border-blue-500 text-blue-500 rounded-lg text-sm font-medium hover:bg-blue-50 disabled:opacity-50"
               >
                 No
               </button>
               <button
-                onClick={confirmDelete}
-                disabled={isDeleting}
+                onClick={confirmToggleStatus}
+                disabled={isToggling}
                 className="px-6 py-2 bg-blue-500 text-white rounded-lg text-sm font-medium hover:bg-blue-600 disabled:opacity-50"
               >
-                {isDeleting ? 'Removing...' : 'Yes'}
+                {isToggling ? 'Saving...' : 'Yes'}
               </button>
             </div>
           </div>

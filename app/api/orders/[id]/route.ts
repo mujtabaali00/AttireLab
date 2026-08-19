@@ -63,6 +63,10 @@ export async function PATCH(req: NextRequest, { params }: RouteCtx) {
 
     if (!existing) return apiError('Order not found', 404)
 
+    if (existing.status === 'DELIVERED') {
+      return apiError('This order has already been delivered and its status can no longer be changed', 400)
+    }
+
     // Restore stock if transitioning TO cancelled (and wasn't already cancelled)
     const wasAlreadyCancelled = existing.status === 'CANCELLED'
     const isNowCancelled = status === 'CANCELLED'
