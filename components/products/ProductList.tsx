@@ -59,7 +59,6 @@ export function ProductList({ initialProducts, categories, initialHasMore }: Pro
       loadingRef.current = false
       setIsLoadingMore(false)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasMore, page])
 
   useEffect(() => {
@@ -115,6 +114,21 @@ export function ProductList({ initialProducts, categories, initialHasMore }: Pro
             >
               <Search className="w-4 h-4" />
             </button>
+          </div>
+
+          {/* Category dropdown */}
+          <div className="relative shrink-0">
+            <select
+              value={selectedCategory}
+              onChange={e => setSelectedCategory(e.target.value)}
+              className="w-full sm:w-auto appearance-none rounded border border-gray-300 bg-white py-1.5 pl-3 pr-8 text-sm font-medium text-gray-700 outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-300 cursor-pointer"
+            >
+              <option value="all">All Categories</option>
+              {categories.map(c => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+            <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
           </div>
 
           {/* Sort dropdown */}

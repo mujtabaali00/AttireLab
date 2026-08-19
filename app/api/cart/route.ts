@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { getCart, releaseExpiredCarts } from '@/lib/cart'
 import { apiSuccess, apiError } from '@/lib/api-response'

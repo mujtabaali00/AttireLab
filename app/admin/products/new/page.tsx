@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
-import { useForm, useFieldArray } from 'react-hook-form'
+import { useForm, useFieldArray, useWatch, type Control } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { createProductSchema } from '@/lib/validations/product.schema'
 import { z } from 'zod'
@@ -33,6 +33,54 @@ interface Category {
   slug: string
 }
 
+// Isolated so only this row re-renders when its own image changes — watch() from
+// useForm() re-renders the whole form on every change and isn't React Compiler
+// compatible, whereas useWatch() scoped to one field is both.
+function SpecImagePreview({
+  control,
+  index,
+  uploading,
+  onChange,
+  onRemove,
+}: {
+  control: Control<FormInput>
+  index: number
+  uploading: boolean
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void
+  onRemove: () => void
+}) {
+  const imageUrl = useWatch({ control, name: `specifications.${index}.imageUrl` })
+  return (
+    <div className="relative w-14 h-14 bg-white rounded-md border border-gray-300 flex items-center justify-center overflow-hidden group cursor-pointer">
+      {imageUrl ? (
+        <>
+          <Image src={imageUrl} alt="Variant" fill className="object-cover" sizes="56px" />
+          <button
+            type="button"
+            onClick={onRemove}
+            className="absolute inset-0 bg-black/50 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </>
+      ) : uploading ? (
+        <Loader2 className="w-4 h-4 text-blue-500 animate-spin" />
+      ) : (
+        <label className="cursor-pointer w-full h-full flex flex-col items-center justify-center hover:bg-gray-50 gap-1">
+          <ImageIcon className="w-4 h-4 text-gray-400" />
+          <span className="text-[9px] text-gray-400">Upload</span>
+          <input
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            className="hidden"
+            onChange={onChange}
+          />
+        </label>
+      )}
+    </div>
+  )
+}
+
 export default function NewProductPage() {
   const router = useRouter()
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -59,9 +107,8 @@ export default function NewProductPage() {
     control,
     handleSubmit,
     setValue,
-    watch,
     formState: { errors },
-  } = useForm<FormInput, any, FormValues>({
+  } = useForm<FormInput, undefined, FormValues>({
     resolver: zodResolver(createProductSchema),
     defaultValues: {
       imageUrls: [],
@@ -76,7 +123,7 @@ export default function NewProductPage() {
   })
 
   // Watch specifications to sum up quantity if present
-  const specifications = watch('specifications')
+  const specifications = useWatch({ control, name: 'specifications' })
 
   // Auto-sum quantity from spec quantities when specs have been filled
   useEffect(() => {
@@ -508,33 +555,13 @@ export default function NewProductPage() {
                   {/* Variant Image */}
                   <div className="col-span-12 sm:col-span-2 flex flex-col gap-1">
                     <label className="text-[10px] font-semibold text-gray-500 uppercase">Image</label>
-                    <div className="relative w-14 h-14 bg-white rounded-md border border-gray-300 flex items-center justify-center overflow-hidden group cursor-pointer">
-                      {watch(`specifications.${index}.imageUrl`) ? (
-                        <>
-                          <Image src={watch(`specifications.${index}.imageUrl`)!} alt="Variant" fill className="object-cover" sizes="56px" />
-                          <button
-                            type="button"
-                            onClick={() => setValue(`specifications.${index}.imageUrl`, undefined)}
-                            className="absolute inset-0 bg-black/50 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
-                        </>
-                      ) : specUploadStates[index] ? (
-                        <Loader2 className="w-4 h-4 text-blue-500 animate-spin" />
-                      ) : (
-                        <label className="cursor-pointer w-full h-full flex flex-col items-center justify-center hover:bg-gray-50 gap-1">
-                          <ImageIcon className="w-4 h-4 text-gray-400" />
-                          <span className="text-[9px] text-gray-400">Upload</span>
-                          <input
-                            type="file"
-                            accept="image/jpeg,image/png,image/webp"
-                            className="hidden"
-                            onChange={(e) => handleSpecImageChange(index, e)}
-                          />
-                        </label>
-                      )}
-                    </div>
+                    <SpecImagePreview
+                      control={control}
+                      index={index}
+                      uploading={!!specUploadStates[index]}
+                      onChange={(e) => handleSpecImageChange(index, e)}
+                      onRemove={() => setValue(`specifications.${index}.imageUrl`, undefined)}
+                    />
                   </div>
 
                   {/* Attributes */}

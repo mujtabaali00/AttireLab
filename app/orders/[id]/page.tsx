@@ -3,7 +3,7 @@ import { db } from '@/lib/db'
 import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
-import { ArrowLeft, Package } from 'lucide-react'
+import { Package } from 'lucide-react'
 import { OrderStatus } from '@prisma/client'
 
 export const metadata = { title: 'Order Detail' }
@@ -27,7 +27,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
       user: true,
       items: {
         include: {
-          product: { include: { images: true } },
+          product: { include: { images: true, specifications: true } },
           specification: true
         }
       }
@@ -93,11 +93,19 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
             <h2 className="text-sm font-bold text-gray-900">Items Ordered</h2>
           </div>
           <div className="divide-y divide-gray-100">
-            {order.items.map(item => (
+            {order.items.map(item => {
+              // Legacy orders (placed before the variant-based cart/order refactor) have no
+              // specificationId FK, only a snapshotted color string — match it against the
+              // product's current specifications so the right variant photo still shows.
+              const legacyColorMatch = !item.specification && item.color
+                ? item.product.specifications.find(s => s.color === item.color && s.imageUrl)
+                : undefined
+              const displayImage = item.specification?.imageUrl || legacyColorMatch?.imageUrl || item.product.images[0]?.url
+              return (
               <div key={item.id} className="flex items-start gap-3 px-5 py-4">
                 <div className="relative w-12 h-12 bg-gray-50 rounded-lg overflow-hidden shrink-0">
-                  {item.specification?.imageUrl || item.product.images[0]?.url ? (
-                    <Image src={item.specification?.imageUrl || item.product.images[0].url} alt={item.productName} fill className="object-cover" sizes="48px" />
+                  {displayImage ? (
+                    <Image src={displayImage} alt={item.productName} fill className="object-cover" sizes="48px" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
                       <Package className="w-5 h-5 text-gray-300" />
@@ -117,7 +125,8 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
                   Rs {(Number(item.unitPrice) * item.quantity).toLocaleString()}
                 </p>
               </div>
-            ))}
+              )
+            })}
           </div>
 
           {/* Price breakdown */}
@@ -159,7 +168,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
           <div className="border border-gray-200 rounded-xl p-5">
             <h2 className="text-sm font-bold text-gray-900 mb-3">Order Status</h2>
             <div className="space-y-2">
-              {(['PENDING', 'PROCESSING', 'SHIPPED', 'DELIVERED'] as OrderStatus[]).map((s, i) => {
+              {(['PENDING', 'PROCESSING', 'SHIPPED', 'DELIVERED'] as OrderStatus[]).map((s) => {
                 const statuses: OrderStatus[] = ['PENDING', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED']
                 const currentIdx = statuses.indexOf(order.status)
                 const thisIdx = statuses.indexOf(s)

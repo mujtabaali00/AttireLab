@@ -1,17 +1,26 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { Suspense, useState, useEffect } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
-import { ArrowLeft, Trash2, Plus, Minus, X, ShoppingBag, CheckCircle } from 'lucide-react'
+import { Trash2, Plus, Minus, X, ShoppingBag, CheckCircle } from 'lucide-react'
 import { useCartStore } from '@/lib/store/cart.store'
 import { useSession } from 'next-auth/react'
 import { toast } from 'react-hot-toast'
 
 export default function CartPage() {
+  return (
+    <Suspense fallback={null}>
+      <CartPageContent />
+    </Suspense>
+  )
+}
+
+function CartPageContent() {
   const [mounted, setMounted] = useState(false)
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { data: session, status } = useSession()
 
   const { items, expiresAt, updateQuantity, removeItem, clearCart, getSubtotal } = useCartStore()
@@ -24,24 +33,26 @@ export default function CartPage() {
   const [placedOrderId, setPlacedOrderId] = useState<string | null>(null)
   const [timeLeft, setTimeLeft] = useState<string | null>(null)
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time client-mount flag, not derived state
   useEffect(() => { setMounted(true) }, [])
 
-  // Auto-open address modal if user just came back from login (session present + cart not empty)
+  // Auto-resume checkout if user was sent to login from "Place Order" (session present
+  // + cart not empty). Login/register redirect back here client-side (router.push), which
+  // never updates document.referrer, so we use an explicit ?checkout=1 flag instead.
   useEffect(() => {
-    if (session && mounted && items.length > 0) {
-      // Check if they were redirected back from login
-      const fromLogin = typeof window !== 'undefined' && document.referrer.includes('/auth/')
-      if (fromLogin) {
-        setShowAddressModal(true)
-      }
+    if (session && mounted && items.length > 0 && searchParams.get('checkout') === '1') {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- resuming an in-progress checkout, not derived state
+      setShowAddressModal(true)
+      router.replace('/cart')
     }
-  }, [session, mounted, items.length])
+  }, [session, mounted, items.length, searchParams, router])
 
   // Load recent addresses from local storage
   useEffect(() => {
     if (mounted) {
       try {
         const stored = localStorage.getItem('attirelab_recent_addresses')
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- syncing from an external store (localStorage) on mount
         if (stored) setRecentAddresses(JSON.parse(stored).slice(0, 3))
       } catch {}
     }
@@ -49,6 +60,7 @@ export default function CartPage() {
 
   useEffect(() => {
     if (!expiresAt) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- clearing timer display when there's nothing to count down
       setTimeLeft(null)
       return
     }
@@ -94,8 +106,8 @@ export default function CartPage() {
 
   const handlePlaceOrderClick = () => {
     if (!session) {
-      // Not logged in — redirect to login with callbackUrl=/cart
-      router.push('/auth/login?callbackUrl=/cart')
+      // Not logged in — redirect to login, flagging that checkout should resume on return
+      router.push(`/auth/login?callbackUrl=${encodeURIComponent('/cart?checkout=1')}`)
       return
     }
     // Logged in — open address modal directly

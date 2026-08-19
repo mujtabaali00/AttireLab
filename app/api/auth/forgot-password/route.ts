@@ -21,7 +21,7 @@ export async function POST(req: Request) {
     })
 
     if (!user) {
-      return apiSuccess({ message: 'If that email exists, a reset link has been sent' })
+      return apiError('No account found with that email', 404)
     }
 
     const token = crypto.randomBytes(32).toString('hex')
@@ -44,8 +44,8 @@ export async function POST(req: Request) {
     
     await sendPasswordResetEmail(user.email, resetUrl)
 
-    return apiSuccess({ 
-      message: 'If that email exists, a reset link has been sent' 
+    return apiSuccess({
+      message: 'A reset link has been sent to your email'
     })
   } catch (error) {
     logger.error({ error }, 'FORGOT_PASSWORD_ERROR')

@@ -128,7 +128,7 @@ export async function PATCH(req: NextRequest, { params }: RouteCtx) {
     })
 
     return apiSuccess(order)
-  } catch (error) {
+  } catch {
     return apiError('Failed to update order status', 500)
   }
 }

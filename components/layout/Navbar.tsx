@@ -86,6 +86,7 @@ export function Navbar() {
   const isAdminRoute = pathname.startsWith('/admin')
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time client-mount flag, not derived state
     setMounted(true)
     if (!isInitialized) fetchCart()
   }, [fetchCart, isInitialized])
@@ -122,6 +123,7 @@ export function Navbar() {
   }
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- initial data fetch on mount/session change
     fetchNotifications(true)
     const interval = setInterval(() => fetchNotifications(true), 30_000)
     return () => clearInterval(interval)
@@ -129,6 +131,7 @@ export function Navbar() {
   }, [session])
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- refetch on dropdown open, not derived state
     if (notifOpen) fetchNotifications(true)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [notifOpen])
