@@ -1,9 +1,9 @@
 'use client'
 
-import { useMemo, useState } from 'react'
-import Link from 'next/link'
-import { Search, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Search, ChevronDown, Loader2 } from 'lucide-react'
 import { ProductCard, type SerializedProduct } from './ProductCard'
+import { APP_CONSTANTS } from '@/lib/constants'
 
 interface Category {
   id: string
@@ -14,8 +14,7 @@ interface Category {
 interface ProductListProps {
   initialProducts: SerializedProduct[]
   categories: Category[]
-  currentPage: number
-  totalPages: number
+  initialHasMore: boolean
 }
 
 const SORT_OPTIONS = [
@@ -24,13 +23,60 @@ const SORT_OPTIONS = [
   { value: 'price_desc', label: 'Price: High → Low' },
 ]
 
-export function ProductList({ initialProducts, categories, currentPage, totalPages }: ProductListProps) {
+const BATCH_SIZE = APP_CONSTANTS.PRODUCTS.LAZY_BATCH_SIZE
+
+export function ProductList({ initialProducts, categories, initialHasMore }: ProductListProps) {
+  const [products, setProducts] = useState(initialProducts)
+  const [page, setPage] = useState(1) // page 1 was already loaded server-side
+  const [hasMore, setHasMore] = useState(initialHasMore)
+  const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [search, setSearch] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('all')
   const [sortBy, setSortBy] = useState('newest')
 
+  const sentinelRef = useRef<HTMLDivElement>(null)
+  const loadingRef = useRef(false)
+
+  const loadMore = useCallback(async () => {
+    if (loadingRef.current || !hasMore) return
+    loadingRef.current = true
+    setIsLoadingMore(true)
+    try {
+      const nextPage = page + 1
+      const res = await fetch(`/api/products?page=${nextPage}&limit=${BATCH_SIZE}`)
+      const data = await res.json()
+      if (data.data) {
+        const newProducts = data.data.products as SerializedProduct[]
+        setProducts(prev => [...prev, ...newProducts])
+        setPage(nextPage)
+        setHasMore(nextPage * BATCH_SIZE < data.data.total)
+      } else {
+        setHasMore(false)
+      }
+    } catch {
+      // Leave hasMore as-is — scrolling again will retry.
+    } finally {
+      loadingRef.current = false
+      setIsLoadingMore(false)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasMore, page])
+
+  useEffect(() => {
+    const sentinel = sentinelRef.current
+    if (!sentinel) return
+    const observer = new IntersectionObserver(
+      entries => {
+        if (entries[0].isIntersecting) loadMore()
+      },
+      { rootMargin: '600px' }
+    )
+    observer.observe(sentinel)
+    return () => observer.disconnect()
+  }, [loadMore])
+
   const filtered = useMemo(() => {
-    let list = [...initialProducts]
+    let list = [...products]
 
     if (selectedCategory !== 'all') {
       list = list.filter(p => p.categoryId === selectedCategory)
@@ -45,7 +91,7 @@ export function ProductList({ initialProducts, categories, currentPage, totalPag
     else if (sortBy === 'price_desc') list.sort((a, b) => b.price - a.price)
 
     return list
-  }, [initialProducts, search, selectedCategory, sortBy])
+  }, [products, search, selectedCategory, sortBy])
 
   return (
     <div className="px-4 py-6 sm:px-8">
@@ -87,48 +133,30 @@ export function ProductList({ initialProducts, categories, currentPage, totalPag
         </div>
       </div>
 
-      {/* Products Grid — 4 columns matching screenshot */}
+      {/* Products Grid — 4 columns on desktop so each batch of 8 fills two rows */}
       {filtered.length === 0 ? (
         <div className="text-center py-16 text-gray-400">
           <p className="text-sm">No products found.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {filtered.map(product => (
             <ProductCard key={product.id} product={product} />
           ))}
         </div>
       )}
 
-      {/* Pagination — search/sort/filter above only apply within the current page */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-center gap-3 mt-8">
-          <Link
-            href={`/?page=${currentPage - 1}`}
-            aria-disabled={currentPage <= 1}
-            className={`flex items-center gap-1 px-3 py-1.5 text-sm font-medium rounded border transition-colors ${
-              currentPage <= 1
-                ? 'pointer-events-none opacity-40 border-gray-200 text-gray-400'
-                : 'border-gray-300 text-gray-700 hover:bg-gray-50'
-            }`}
-          >
-            <ChevronLeft className="w-4 h-4" /> Previous
-          </Link>
-          <span className="text-sm text-gray-500 px-2">
-            Page {currentPage} of {totalPages}
-          </span>
-          <Link
-            href={`/?page=${currentPage + 1}`}
-            aria-disabled={currentPage >= totalPages}
-            className={`flex items-center gap-1 px-3 py-1.5 text-sm font-medium rounded border transition-colors ${
-              currentPage >= totalPages
-                ? 'pointer-events-none opacity-40 border-gray-200 text-gray-400'
-                : 'border-gray-300 text-gray-700 hover:bg-gray-50'
-            }`}
-          >
-            Next <ChevronRight className="w-4 h-4" />
-          </Link>
+      {/* Infinite scroll trigger */}
+      <div ref={sentinelRef} className="h-px" />
+
+      {isLoadingMore && (
+        <div className="flex items-center justify-center gap-2 py-6 text-sm text-gray-400">
+          <Loader2 className="w-4 h-4 animate-spin" /> Loading more products...
         </div>
+      )}
+
+      {!hasMore && products.length > 0 && (
+        <p className="text-center text-xs text-gray-400 py-6">You&apos;ve reached the end of the catalogue.</p>
       )}
     </div>
   )

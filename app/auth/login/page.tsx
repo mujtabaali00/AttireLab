@@ -7,6 +7,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { loginSchema } from "@/lib/validations/auth.schema"
+import { useCartStore } from "@/lib/store/cart.store"
 import { Input } from "@/components/ui/Input"
 import { Button } from "@/components/ui/Button"
 import { Label } from "@/components/ui/Label"
@@ -50,6 +51,12 @@ export default function LoginPage() {
     }
 
     const session = await getSession()
+
+    // Credentials sign-in is a client-side fetch (no full page reload like
+    // Google's OAuth redirect gets), so the cart store — already initialized
+    // from the pre-login guest session — never refetches on its own. Force it
+    // here so the cart reflects the logged-in user's cart immediately.
+    await useCartStore.getState().fetchCart()
 
     if (session?.user?.role === "ADMIN") {
       router.push("/admin/products")

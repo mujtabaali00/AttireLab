@@ -2,7 +2,7 @@ import crypto from 'crypto'
 import { db } from '@/lib/db'
 import { forgotPasswordSchema } from '@/lib/validations/auth.schema'
 import { apiSuccess, apiError } from '@/lib/api-response'
-import { sendPasswordResetEmail } from '@/lib/mail'
+import { sendPasswordResetEmail } from '@/services/email/email.service'
 import { logger } from '@/lib/logger'
 
 export async function POST(req: Request) {

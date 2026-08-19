@@ -21,5 +21,11 @@ export const APP_CONSTANTS = {
   PRODUCTS: {
     PAGE_SIZE: 20,
     MAX_PAGE_SIZE: 100,
+    LAZY_BATCH_SIZE: 8,
+  },
+
+  // Notifications Configuration
+  NOTIFICATIONS: {
+    PAGE_SIZE: 15,
   },
 }

@@ -7,6 +7,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { registerSchema } from "@/lib/validations/auth.schema"
+import { useCartStore } from "@/lib/store/cart.store"
 import { Input } from "@/components/ui/Input"
 import { Button } from "@/components/ui/Button"
 import { Label } from "@/components/ui/Label"
@@ -62,6 +63,7 @@ export default function RegisterPage() {
         setError("Account created, but failed to log in automatically.")
         setIsLoading(false)
       } else {
+        await useCartStore.getState().fetchCart()
         router.push(callbackUrl)
         router.refresh()
       }

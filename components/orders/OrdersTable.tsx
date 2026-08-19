@@ -53,7 +53,8 @@ export function OrdersTable({ orders, isAdmin = false }: OrdersTableProps) {
       if (res.ok) {
         window.location.reload()
       } else {
-        toast.error('Failed to update status')
+        const data = await res.json().catch(() => null)
+        toast.error(data?.error || 'Failed to update status')
       }
     } catch {
       toast.error('Failed to update status')
@@ -101,6 +102,13 @@ export function OrdersTable({ orders, isAdmin = false }: OrdersTableProps) {
                       <div className="flex items-center gap-2">
                         {updatingId === order.id ? (
                           <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
+                        ) : order.status === 'DELIVERED' ? (
+                          <span
+                            title="Delivered orders can no longer be changed"
+                            className={`inline-flex px-3 py-1.5 text-xs font-medium rounded cursor-not-allowed ${statusInfo.color}`}
+                          >
+                            {statusInfo.label}
+                          </span>
                         ) : (
                           <select
                             value={order.status}

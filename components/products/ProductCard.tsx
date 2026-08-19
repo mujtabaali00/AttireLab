@@ -105,7 +105,21 @@ export function ProductCard({ product }: { product: SerializedProduct }) {
   const maxAllowedQty = hasSpecs ? (matchingSpec?.quantity || 0) : productQty
   const isSelectionOutOfStock = hasSpecs && maxAllowedQty === 0
 
-  const displayImage = matchingSpec?.imageUrl || product.images[0]?.url
+  // When the exact colour+size combination has no matching variant (or the
+  // matching variant has no image of its own), fall back to any other
+  // variant image for the selected colour instead of the generic product
+  // photo — the selection may be out of stock (0), but should still look
+  // like the colour the user picked. Only if NO variant of that colour has
+  // an image at all do we fall back to the product's generic image, so we
+  // never show a blank "No Image" placeholder when a real photo exists.
+  const colorFallbackSpec = useMemo(() => {
+    if (!hasSpecs || !selectedColor) return null
+    return specs!.find(s => s.color === selectedColor && s.imageUrl) || null
+  }, [specs, hasSpecs, selectedColor])
+
+  const displayImage = hasSpecs
+    ? matchingSpec?.imageUrl || colorFallbackSpec?.imageUrl || product.images[0]?.url
+    : product.images[0]?.url
   const displayedQty = Math.max(1, Math.min(qty, maxAllowedQty || 999))
 
   const handleAdd = async () => {

@@ -4,6 +4,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { ArrowLeft, Package } from 'lucide-react'
 import { OrderStatus } from '@prisma/client'
+import { AdminOrderStatusControl } from '@/components/orders/AdminOrderStatusControl'
 
 export const metadata = { title: 'Order Detail — Admin' }
 
@@ -156,9 +157,7 @@ export default async function AdminOrderDetailPage({ params }: { params: Promise
           {/* Order status */}
           <div className="bg-white border border-gray-200 rounded-xl p-5">
             <h2 className="text-sm font-bold text-gray-900 mb-3">Order Status</h2>
-            <span className={`inline-flex items-center px-3 py-1.5 text-xs font-semibold rounded-full border ${statusInfo.color}`}>
-              {statusInfo.label}
-            </span>
+            <AdminOrderStatusControl orderId={order.id} status={order.status} />
             <p className="text-xs text-gray-400 mt-2">
               Last updated: {new Date(order.updatedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
             </p>

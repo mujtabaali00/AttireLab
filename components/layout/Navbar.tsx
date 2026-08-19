@@ -4,7 +4,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { ShoppingBag, Bell, ChevronDown, Package, LogOut, ShoppingCart, X, Truck } from 'lucide-react'
 import { useCartStore } from '@/lib/store/cart.store'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type UIEvent } from 'react'
 import { useSession, signOut } from 'next-auth/react'
 import { usePathname } from 'next/navigation'
 import { formatDistanceToNow } from 'date-fns'
@@ -69,6 +69,10 @@ export function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [notifOpen, setNotifOpen] = useState(false)
   const [notifications, setNotifications] = useState<Notification[]>([])
+  const [notifCursor, setNotifCursor] = useState<string | null>(null)
+  const [notifHasMore, setNotifHasMore] = useState(false)
+  const [notifLoadingMore, setNotifLoadingMore] = useState(false)
+  const [unreadCount, setUnreadCount] = useState(0)
   const [notifTab, setNotifTab] = useState<'unread' | 'all'>('unread')
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
 
@@ -86,24 +90,46 @@ export function Navbar() {
     if (!isInitialized) fetchCart()
   }, [fetchCart, isInitialized])
 
-  const fetchNotifications = async () => {
+  // reset=true replaces the list with a fresh first page (initial load, poll,
+  // dropdown open); reset=false appends the next page (scroll-to-load-more).
+  const fetchNotifications = async (reset = true) => {
     if (!session?.user) return
+    if (!reset && notifLoadingMore) return
+    if (!reset) setNotifLoadingMore(true)
     try {
-      const res = await fetch('/api/notifications')
+      const cursor = reset ? '' : notifCursor
+      const url = cursor ? `/api/notifications?cursor=${cursor}` : '/api/notifications'
+      const res = await fetch(url)
       const data = await res.json()
-      if (data.data) setNotifications(data.data)
+      if (data.data) {
+        const { notifications: page, nextCursor, unreadCount: count } = data.data
+        setNotifications(prev => reset ? page : [...prev, ...page])
+        setNotifCursor(nextCursor)
+        setNotifHasMore(!!nextCursor)
+        setUnreadCount(count)
+      }
     } catch { }
+    finally {
+      if (!reset) setNotifLoadingMore(false)
+    }
+  }
+
+  const handleNotifScroll = (e: UIEvent<HTMLDivElement>) => {
+    const el = e.currentTarget
+    if (el.scrollHeight - el.scrollTop - el.clientHeight < 80 && notifHasMore && !notifLoadingMore) {
+      fetchNotifications(false)
+    }
   }
 
   useEffect(() => {
-    fetchNotifications()
-    const interval = setInterval(fetchNotifications, 30_000)
+    fetchNotifications(true)
+    const interval = setInterval(() => fetchNotifications(true), 30_000)
     return () => clearInterval(interval)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session])
 
   useEffect(() => {
-    if (notifOpen) fetchNotifications()
+    if (notifOpen) fetchNotifications(true)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [notifOpen])
 
@@ -118,7 +144,6 @@ export function Navbar() {
 
   if (pathname.startsWith('/auth')) return null
 
-  const unreadCount = notifications.filter(n => !n.read).length
   const displayedNotifs = notifTab === 'unread' ? notifications.filter(n => !n.read) : notifications
 
   const handleMarkAsRead = async (id?: string) => {
@@ -130,8 +155,10 @@ export function Navbar() {
       })
       if (id) {
         setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n))
+        setUnreadCount(prev => Math.max(0, prev - 1))
       } else {
         setNotifications(prev => prev.map(n => ({ ...n, read: true })))
+        setUnreadCount(0)
       }
     } catch { }
   }
@@ -180,19 +207,26 @@ export function Navbar() {
                       All
                     </button>
                   </div>
-                  <div className="max-h-[60vh] overflow-y-auto divide-y divide-gray-50">
+                  <div onScroll={handleNotifScroll} className="max-h-[60vh] overflow-y-auto divide-y divide-gray-50">
                     {displayedNotifs.length === 0 ? (
                       <div className="p-8 text-center"><Bell className="w-8 h-8 text-gray-200 mx-auto mb-2" /><p className="text-sm text-gray-400">{notifTab === 'unread' ? 'All caught up!' : 'No notifications yet'}</p></div>
-                    ) : displayedNotifs.map(notif => (
-                      <div key={notif.id} onClick={() => { if (!notif.read) handleMarkAsRead(notif.id) }} className={`px-4 py-3 cursor-pointer transition-colors hover:bg-gray-50 flex items-start gap-3 ${!notif.read ? 'bg-blue-50/40' : ''}`}>
-                        <NotifIcon type={notif.type} />
-                        <div className="flex-1 min-w-0">
-                          <p className={`text-sm leading-snug ${!notif.read ? 'text-gray-900 font-semibold' : 'text-gray-600'}`}>{notif.message}</p>
-                          <p className="text-xs text-gray-400 mt-0.5">{formatDistanceToNow(new Date(notif.createdAt), { addSuffix: true })}</p>
-                        </div>
-                        {!notif.read && <span className="w-2 h-2 bg-blue-500 rounded-full shrink-0 mt-1.5" />}
-                      </div>
-                    ))}
+                    ) : (
+                      <>
+                        {displayedNotifs.map(notif => (
+                          <div key={notif.id} onClick={() => { if (!notif.read) handleMarkAsRead(notif.id) }} className={`px-4 py-3 cursor-pointer transition-colors hover:bg-gray-50 flex items-start gap-3 ${!notif.read ? 'bg-blue-50/40' : ''}`}>
+                            <NotifIcon type={notif.type} />
+                            <div className="flex-1 min-w-0">
+                              <p className={`text-sm leading-snug ${!notif.read ? 'text-gray-900 font-semibold' : 'text-gray-600'}`}>{notif.message}</p>
+                              <p className="text-xs text-gray-400 mt-0.5">{formatDistanceToNow(new Date(notif.createdAt), { addSuffix: true })}</p>
+                            </div>
+                            {!notif.read && <span className="w-2 h-2 bg-blue-500 rounded-full shrink-0 mt-1.5" />}
+                          </div>
+                        ))}
+                        {notifLoadingMore && (
+                          <div className="p-3 text-center text-xs text-gray-400">Loading more...</div>
+                        )}
+                      </>
+                    )}
                   </div>
                 </div>
               )}
@@ -295,19 +329,26 @@ export function Navbar() {
                         All
                       </button>
                     </div>
-                    <div className="max-h-[60vh] overflow-y-auto divide-y divide-gray-50">
+                    <div onScroll={handleNotifScroll} className="max-h-[60vh] overflow-y-auto divide-y divide-gray-50">
                       {displayedNotifs.length === 0 ? (
                         <div className="p-8 text-center"><Bell className="w-8 h-8 text-gray-200 mx-auto mb-2" /><p className="text-sm text-gray-400">{notifTab === 'unread' ? 'All caught up!' : 'No notifications yet'}</p></div>
-                      ) : displayedNotifs.map(notif => (
-                        <div key={notif.id} onClick={() => { if (!notif.read) handleMarkAsRead(notif.id) }} className={`px-4 py-3 cursor-pointer transition-colors hover:bg-gray-50 flex items-start gap-3 ${!notif.read ? 'bg-blue-50/40' : ''}`}>
-                          <NotifIcon type={notif.type} />
-                          <div className="flex-1 min-w-0">
-                            <p className={`text-sm leading-snug ${!notif.read ? 'text-gray-900 font-semibold' : 'text-gray-600'}`}>{notif.message}</p>
-                            <p className="text-xs text-gray-400 mt-0.5">{formatDistanceToNow(new Date(notif.createdAt), { addSuffix: true })}</p>
-                          </div>
-                          {!notif.read && <span className="w-2 h-2 bg-blue-500 rounded-full shrink-0 mt-1.5" />}
-                        </div>
-                      ))}
+                      ) : (
+                        <>
+                          {displayedNotifs.map(notif => (
+                            <div key={notif.id} onClick={() => { if (!notif.read) handleMarkAsRead(notif.id) }} className={`px-4 py-3 cursor-pointer transition-colors hover:bg-gray-50 flex items-start gap-3 ${!notif.read ? 'bg-blue-50/40' : ''}`}>
+                              <NotifIcon type={notif.type} />
+                              <div className="flex-1 min-w-0">
+                                <p className={`text-sm leading-snug ${!notif.read ? 'text-gray-900 font-semibold' : 'text-gray-600'}`}>{notif.message}</p>
+                                <p className="text-xs text-gray-400 mt-0.5">{formatDistanceToNow(new Date(notif.createdAt), { addSuffix: true })}</p>
+                              </div>
+                              {!notif.read && <span className="w-2 h-2 bg-blue-500 rounded-full shrink-0 mt-1.5" />}
+                            </div>
+                          ))}
+                          {notifLoadingMore && (
+                            <div className="p-3 text-center text-xs text-gray-400">Loading more...</div>
+                          )}
+                        </>
+                      )}
                     </div>
                   </div>
                 )}
