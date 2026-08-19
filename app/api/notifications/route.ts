@@ -3,6 +3,7 @@ import { auth } from '@/auth'
 import { db } from '@/lib/db'
 import { apiSuccess, apiError } from '@/lib/api-response'
 import { APP_CONSTANTS } from '@/lib/constants'
+import { logger } from '@/lib/logger'
 
 export async function GET(req: NextRequest) {
   try {
@@ -30,6 +31,7 @@ export async function GET(req: NextRequest) {
 
     return apiSuccess({ notifications, nextCursor, unreadCount })
   } catch (error) {
+    logger.error({ error }, 'NOTIFICATIONS_FETCH_ERROR')
     return apiError('Internal Server Error', 500)
   }
 }

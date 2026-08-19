@@ -26,6 +26,7 @@ export default function AdminCategoriesPage() {
     setLoading(false)
   }
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- initial data fetch on mount
   useEffect(() => { fetchCategories() }, [])
 
   const handleCreate = async (e: React.FormEvent) => {
