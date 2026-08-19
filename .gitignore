@@ -44,3 +44,5 @@ next-env.d.ts
 AGENTS.md
 CLAUDE.md
 implementation.md
+
+public/uploads
