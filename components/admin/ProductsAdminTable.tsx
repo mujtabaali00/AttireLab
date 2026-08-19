@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { Package, Pencil, Power, PowerOff, Search } from 'lucide-react'
+import { Package, Pencil, Power, Search, Loader2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'react-hot-toast'
 import { Category } from '@prisma/client'
@@ -216,7 +216,7 @@ export function ProductsClientTable({
                               className="p-1.5 text-red-500 hover:bg-red-50 rounded transition-colors"
                               title="Deactivate Product"
                             >
-                              <PowerOff className="w-4 h-4" />
+                              <Power className="w-4 h-4" />
                             </button>
                           ) : (
                             <button
@@ -252,8 +252,8 @@ export function ProductsClientTable({
                 key={i}
                 onClick={() => setCurrentPage(i + 1)}
                 className={`w-8 h-7 text-sm rounded border transition-colors ${currentPage === i + 1
-                    ? 'bg-blue-600 text-white border-blue-600'
-                    : 'text-gray-600 border-gray-200 hover:bg-gray-50'
+                  ? 'bg-blue-600 text-white border-blue-600'
+                  : 'text-gray-600 border-gray-200 hover:bg-gray-50'
                   }`}
               >
                 {i + 1}
@@ -298,9 +298,9 @@ export function ProductsClientTable({
               <button
                 onClick={confirmToggleStatus}
                 disabled={isToggling}
-                className="px-6 py-2 bg-blue-500 text-white rounded-lg text-sm font-medium hover:bg-blue-600 disabled:opacity-50"
+                className="px-6 py-2 bg-blue-500 text-white rounded-lg text-sm font-medium hover:bg-blue-600 disabled:opacity-50 flex items-center justify-center min-w-[52px]"
               >
-                {isToggling ? 'Saving...' : 'Yes'}
+                {isToggling ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Yes'}
               </button>
             </div>
           </div>

@@ -4,10 +4,11 @@ import { Suspense, useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
-import { Trash2, Plus, Minus, X, ShoppingBag, CheckCircle } from 'lucide-react'
+import { Trash2, Plus, Minus, X, ShoppingBag, CheckCircle, Loader2 } from 'lucide-react'
 import { useCartStore } from '@/lib/store/cart.store'
 import { useSession } from 'next-auth/react'
 import { toast } from 'react-hot-toast'
+import { PageSpinner } from '@/components/ui/PageSpinner'
 
 export default function CartPage() {
   return (
@@ -79,7 +80,7 @@ function CartPageContent() {
     return () => clearInterval(interval)
   }, [expiresAt])
 
-  if (!mounted || status === 'loading') return null
+  if (!mounted || status === 'loading') return <PageSpinner />
 
   const subtotal = getSubtotal()
   const tax = subtotal * 0.10
@@ -452,9 +453,9 @@ function CartPageContent() {
                 <button
                   type="submit"
                   disabled={isPlacingOrder}
-                  className="px-4 py-2 bg-blue-500 text-white rounded-lg text-sm font-semibold hover:bg-blue-600 disabled:opacity-50"
+                  className="px-4 py-2 bg-blue-500 text-white rounded-lg text-sm font-semibold hover:bg-blue-600 disabled:opacity-50 flex items-center justify-center gap-2 min-w-[120px]"
                 >
-                  {isPlacingOrder ? 'Processing...' : 'Confirm Order'}
+                  {isPlacingOrder ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Confirm Order'}
                 </button>
               </div>
             </form>

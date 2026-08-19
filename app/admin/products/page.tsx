@@ -1,6 +1,6 @@
 import { db } from '@/lib/db'
 import Link from 'next/link'
-import { ProductsClientTable } from '@/components/admin/ProductsClientTable'
+import { ProductsClientTable } from '@/components/admin/ProductsAdminTable'
 
 export const metadata = { title: 'Products' }
 export const dynamic = 'force-dynamic'

@@ -102,8 +102,8 @@ export default function AdminLoginPage() {
           )}
         </div>
 
-        <Button disabled={isLoading} type="submit" className="w-full bg-gray-900 hover:bg-gray-800">
-          {isLoading ? "Authenticating..." : "Sign in to Dashboard"}
+        <Button isLoading={isLoading} type="submit" className="w-full bg-gray-900 hover:bg-gray-800">
+          Sign in to Dashboard
         </Button>
       </form>
 

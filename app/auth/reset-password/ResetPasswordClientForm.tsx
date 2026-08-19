@@ -103,8 +103,8 @@ export function ResetPasswordClientForm({ token }: { token: string }) {
           )}
         </div>
 
-        <Button disabled={isLoading || !!success} type="submit" className="w-full">
-          {isLoading ? "Resetting..." : "Reset Password"}
+        <Button isLoading={isLoading} disabled={!!success} type="submit" className="w-full">
+          Reset Password
         </Button>
       </form>
     </div>

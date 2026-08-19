@@ -98,8 +98,8 @@ export default function ForgotPasswordPage() {
           )}
         </div>
 
-        <Button disabled={isLoading} type="submit" className="w-full">
-          {isLoading ? "Sending..." : "Forgot Password"}
+        <Button isLoading={isLoading} type="submit" className="w-full">
+          Forgot Password
         </Button>
       </form>
 
