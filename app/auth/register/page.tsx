@@ -9,6 +9,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { registerSchema } from "@/lib/validations/auth.schema"
 import { useCartStore } from "@/lib/store/cart.store"
 import { Input } from "@/components/ui/Input"
+import { PasswordInput } from "@/components/ui/PasswordInput"
 import { Button } from "@/components/ui/Button"
 import { Label } from "@/components/ui/Label"
 import { Loader2 } from "lucide-react"
@@ -179,23 +180,23 @@ function RegisterForm() {
 
         <div className="space-y-1">
           <Label htmlFor="password">Password</Label>
-          <Input
+          <PasswordInput
             id="password"
             placeholder="Password"
-            type="password"
             {...register("password")}
           />
-          {errors.password && (
+          {errors.password ? (
             <p className="text-xs text-red-500">{errors.password.message}</p>
+          ) : (
+            <p className="text-xs text-gray-400">At least 8 characters, including one special character</p>
           )}
         </div>
 
         <div className="space-y-1">
           <Label htmlFor="confirmPassword">Confirm Password</Label>
-          <Input
+          <PasswordInput
             id="confirmPassword"
             placeholder="Password"
-            type="password"
             {...register("confirmPassword")}
           />
           {errors.confirmPassword && (

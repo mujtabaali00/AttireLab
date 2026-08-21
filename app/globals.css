@@ -16,3 +16,13 @@ body {
   background-color: var(--color-surface);
   color: var(--color-text-primary);
 }
+
+button:not(:disabled),
+[role="button"]:not(:disabled) {
+  cursor: pointer;
+}
+
+button:disabled,
+[role="button"][aria-disabled="true"] {
+  cursor: not-allowed;
+}

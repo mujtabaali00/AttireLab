@@ -7,6 +7,8 @@ import { Package, Pencil, Power, Search, Loader2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'react-hot-toast'
 import { Category } from '@prisma/client'
+import { formatPrice } from '@/lib/format'
+import { TablePagination } from '@/components/ui/TablePagination'
 
 type ProductWithDetails = {
   id: string
@@ -180,7 +182,7 @@ export function ProductsClientTable({
 
                       {/* Price */}
                       <td className="px-4 py-3 text-gray-700">
-                        Rs {Number(product.price).toLocaleString()}
+                        Rs {formatPrice(Number(product.price))}
                       </td>
 
                       {/* Category */}
@@ -237,37 +239,12 @@ export function ProductsClientTable({
           )}
         </div>
 
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-end px-4 py-3 border-t border-gray-100 gap-2">
-            <button
-              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-              disabled={currentPage === 1}
-              className="px-3 py-1 text-sm text-blue-500 border border-gray-200 rounded hover:bg-gray-50 disabled:opacity-40 transition-colors"
-            >
-              Previous
-            </button>
-            {Array.from({ length: totalPages }).map((_, i) => (
-              <button
-                key={i}
-                onClick={() => setCurrentPage(i + 1)}
-                className={`w-8 h-7 text-sm rounded border transition-colors ${currentPage === i + 1
-                  ? 'bg-blue-600 text-white border-blue-600'
-                  : 'text-gray-600 border-gray-200 hover:bg-gray-50'
-                  }`}
-              >
-                {i + 1}
-              </button>
-            ))}
-            <button
-              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-              disabled={currentPage === totalPages}
-              className="px-3 py-1 text-sm text-blue-500 border border-gray-200 rounded hover:bg-gray-50 disabled:opacity-40 transition-colors"
-            >
-              Next
-            </button>
-          </div>
-        )}
+        <TablePagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalCount={filteredProducts.length}
+          onPageChange={setCurrentPage}
+        />
       </div>
 
       {/* Activate/Deactivate confirmation modal */}

@@ -8,7 +8,7 @@ export interface CartItem {
   price: number
   imageUrl: string
   quantity: number
-  maxStock: number // Used mostly for UI limits now
+  maxStock: number // Additional stock available beyond what's already in this cart item
   color?: string
   size?: string
 }
@@ -35,12 +35,14 @@ interface CartApiSpecification {
   size: string | null
   price: string | number | null
   imageUrl: string | null
+  quantity: number
 }
 
 interface CartApiProduct {
   status: string
   name: string
   price: string | number
+  quantity: number
   images: { url: string }[]
 }
 
@@ -72,7 +74,9 @@ const mapDbCartToState = (dbCart: CartApiResponse | null): { items: CartItem[], 
       price: Number(item.specification?.price ?? item.product.price),
       imageUrl: item.specification?.imageUrl || item.product.images[0]?.url || '',
       quantity: item.quantity,
-      maxStock: 99, // Backend enforces actual stock limits now
+      // Stock still available to add on top of what's already reserved in this cart item
+      // (the DB quantity was already decremented when this item was added).
+      maxStock: item.specification?.quantity ?? item.product.quantity,
       color: item.specification?.color || undefined,
       size: item.specification?.size || undefined,
     }))

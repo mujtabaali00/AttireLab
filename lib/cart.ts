@@ -7,6 +7,7 @@ import type { Prisma } from '@prisma/client'
 
 const CART_INCLUDE = {
   items: {
+    orderBy: { id: 'asc' }, // cuids are time-ordered — keeps row order stable across writes
     include: {
       product: {
         include: { images: true }

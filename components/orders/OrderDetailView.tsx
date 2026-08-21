@@ -3,6 +3,8 @@ import Image from 'next/image'
 import { ArrowLeft, Package } from 'lucide-react'
 import { OrderStatus, Prisma } from '@prisma/client'
 import { AdminOrderStatusControl } from './AdminOrderStatusControl'
+import { formatPrice } from '@/lib/format'
+import { ORDER_STATUS_LABELS, ORDER_STATUS_SOLID_COLOR } from '@/lib/order-status'
 
 export const ORDER_DETAIL_INCLUDE = {
   user: true,
@@ -16,29 +18,12 @@ export const ORDER_DETAIL_INCLUDE = {
 
 export type OrderDetailData = Prisma.OrderGetPayload<{ include: typeof ORDER_DETAIL_INCLUDE }>
 
-const CUSTOMER_STATUS_STYLES: Record<OrderStatus, { label: string; color: string }> = {
-  PENDING:    { label: 'Pending',     color: 'bg-gray-100 text-gray-700' },
-  PROCESSING: { label: 'In Progress', color: 'bg-yellow-400 text-white' },
-  SHIPPED:    { label: 'Dispatched',  color: 'bg-blue-500 text-white' },
-  DELIVERED:  { label: 'Delivered',   color: 'bg-green-500 text-white' },
-  CANCELLED:  { label: 'Rejected',    color: 'bg-red-500 text-white' },
-}
-
-const ADMIN_STATUS_STYLES: Record<OrderStatus, { label: string; color: string }> = {
-  PENDING:    { label: 'Pending',     color: 'bg-gray-100 text-gray-700 border-gray-200' },
-  PROCESSING: { label: 'In Progress', color: 'bg-yellow-100 text-yellow-700 border-yellow-200' },
-  SHIPPED:    { label: 'Dispatched',  color: 'bg-blue-100 text-blue-700 border-blue-200' },
-  DELIVERED:  { label: 'Delivered',   color: 'bg-green-100 text-green-700 border-green-200' },
-  CANCELLED:  { label: 'Cancelled',   color: 'bg-red-100 text-red-700 border-red-200' },
-}
-
 const STATUS_ORDER: OrderStatus[] = ['PENDING', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED']
 
 export function OrderDetailView({ order, variant }: { order: OrderDetailData; variant: 'admin' | 'customer' }) {
   const isAdmin = variant === 'admin'
-  const statusStyles = isAdmin ? ADMIN_STATUS_STYLES : CUSTOMER_STATUS_STYLES
   const address = order.shippingAddress as Record<string, string> | null
-  const statusInfo = statusStyles[order.status]
+  const statusInfo = { label: ORDER_STATUS_LABELS[order.status], color: ORDER_STATUS_SOLID_COLOR[order.status] }
 
   return (
     <div className={isAdmin ? 'p-6 lg:p-8 max-w-5xl' : 'max-w-5xl mx-auto py-6 px-4 sm:px-0'}>
@@ -52,9 +37,6 @@ export function OrderDetailView({ order, variant }: { order: OrderDetailData; va
             <h1 className="text-xl font-bold text-gray-900">Order Detail</h1>
             <p className="text-sm text-gray-500 font-mono">#{order.id.slice(-8).toUpperCase()}</p>
           </div>
-          <span className={`ml-auto inline-flex items-center px-3 py-1.5 text-xs font-semibold rounded-full border ${statusInfo.color}`}>
-            {statusInfo.label}
-          </span>
         </div>
       ) : (
         <div className="flex items-center justify-between mb-8">
@@ -98,12 +80,12 @@ export function OrderDetailView({ order, variant }: { order: OrderDetailData; va
             </div>
           )}
           <div className="flex flex-col gap-1">
-            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Products</span>
+            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Number of Products</span>
             <span className="text-sm font-semibold text-gray-900">{String(order.items.length).padStart(2, '0')}</span>
           </div>
           <div className="flex flex-col gap-1">
             <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Amount</span>
-            <span className="text-sm font-semibold text-gray-900">Rs {Number(order.total).toLocaleString()}</span>
+            <span className="text-sm font-semibold text-gray-900">Rs {formatPrice(Number(order.total))}</span>
           </div>
         </div>
       </div>
@@ -142,11 +124,11 @@ export function OrderDetailView({ order, variant }: { order: OrderDetailData; va
                       </p>
                     )}
                     <p className="text-xs text-gray-400 mt-0.5">
-                      Qty: {item.quantity}{!isAdmin && ` × Rs ${Number(item.unitPrice).toLocaleString()}`}
+                      Qty: {item.quantity}{!isAdmin && ` × Rs ${formatPrice(Number(item.unitPrice))}`}
                     </p>
                   </div>
                   <p className="text-sm font-semibold text-gray-900 shrink-0">
-                    Rs {(Number(item.unitPrice) * item.quantity).toLocaleString()}
+                    Rs {formatPrice(Number(item.unitPrice) * item.quantity)}
                   </p>
                 </div>
               )
@@ -157,15 +139,15 @@ export function OrderDetailView({ order, variant }: { order: OrderDetailData; va
           <div className="px-5 py-4 border-t border-gray-100 bg-gray-50 space-y-2">
             <div className="flex justify-between text-sm text-gray-600">
               <span>Subtotal</span>
-              <span>Rs {Number(order.subtotal).toLocaleString()}</span>
+              <span>Rs {formatPrice(Number(order.subtotal))}</span>
             </div>
             <div className="flex justify-between text-sm text-gray-600">
               <span>Tax (10%)</span>
-              <span>Rs {Number(order.tax).toLocaleString()}</span>
+              <span>Rs {formatPrice(Number(order.tax))}</span>
             </div>
             <div className="flex justify-between text-sm font-bold text-gray-900 pt-2 border-t border-gray-200">
               <span>Total</span>
-              <span>Rs {Number(order.total).toLocaleString()}</span>
+              <span>Rs {formatPrice(Number(order.total))}</span>
             </div>
           </div>
         </div>
@@ -209,14 +191,14 @@ export function OrderDetailView({ order, variant }: { order: OrderDetailData; va
                   return (
                     <div key={s} className={`flex items-center gap-2 text-xs ${isActive ? 'text-gray-900' : 'text-gray-400'}`}>
                       <div className={`w-2 h-2 rounded-full shrink-0 ${isCurrent ? 'bg-blue-500' : isActive ? 'bg-green-500' : 'bg-gray-200'}`} />
-                      <span className={isCurrent ? 'font-semibold' : ''}>{statusStyles[s].label}</span>
+                      <span className={isCurrent ? 'font-semibold' : ''}>{ORDER_STATUS_LABELS[s]}</span>
                     </div>
                   )
                 })}
                 {order.status === 'CANCELLED' && (
                   <div className="flex items-center gap-2 text-xs text-red-500">
                     <div className="w-2 h-2 rounded-full shrink-0 bg-red-500" />
-                    <span className="font-semibold">Cancelled</span>
+                    <span className="font-semibold">{ORDER_STATUS_LABELS.CANCELLED}</span>
                   </div>
                 )}
               </div>

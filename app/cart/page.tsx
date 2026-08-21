@@ -9,6 +9,7 @@ import { useCartStore } from '@/lib/store/cart.store'
 import { useSession } from 'next-auth/react'
 import { toast } from 'react-hot-toast'
 import { PageSpinner } from '@/components/ui/PageSpinner'
+import { formatPrice } from '@/lib/format'
 
 export default function CartPage() {
   return (
@@ -24,9 +25,12 @@ function CartPageContent() {
   const searchParams = useSearchParams()
   const { data: session, status } = useSession()
 
-  const { items, expiresAt, updateQuantity, removeItem, clearCart, getSubtotal } = useCartStore()
+  const { items, expiresAt, updateQuantity, removeItem, clearCart, getSubtotal, fetchCart } = useCartStore()
+  const [isCartLoading, setIsCartLoading] = useState(true)
 
   const [itemToDelete, setItemToDelete] = useState<string | null>(null)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false)
   const [showAddressModal, setShowAddressModal] = useState(false)
   const [address, setAddress] = useState('')
   const [recentAddresses, setRecentAddresses] = useState<string[]>([])
@@ -36,6 +40,33 @@ function CartPageContent() {
 
   // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time client-mount flag, not derived state
   useEffect(() => { setMounted(true) }, [])
+
+  // Always re-fetch on mount instead of trusting whatever's already sitting in
+  // the store. The store is populated by Navbar's own independent fetchCart()
+  // call (for the header badge), which may not have resolved yet on a fresh
+  // page load — rendering off stale/empty state in that window made the cart
+  // look "vanished" for a moment, and made stock-derived UI (like the + button)
+  // reflect whatever stale numbers happened to be in memory rather than what's
+  // actually in the DB right now (e.g. after an admin changes stock elsewhere).
+  useEffect(() => {
+    let cancelled = false
+    fetchCart().finally(() => { if (!cancelled) setIsCartLoading(false) })
+    return () => { cancelled = true }
+  }, [fetchCart])
+
+  // Items can disappear from the cart via single-item delete, "Clear all", or
+  // stock/expiry changes from the server — without this, selectedIds keeps
+  // stale ids around, corrupting the "Delete Selected (N)" count and the
+  // "select all" checkbox, and can make a later bulk delete fail partway
+  // through trying to delete an item that's already gone.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- pruning selection to stay in sync with the cart store, not derived render state
+    setSelectedIds(prev => {
+      const validIds = new Set(items.map(i => i.id))
+      const next = new Set([...prev].filter(id => validIds.has(id)))
+      return next.size === prev.size ? prev : next
+    })
+  }, [items])
 
   // Auto-resume checkout if user was sent to login from "Place Order" (session present
   // + cart not empty). Login/register redirect back here client-side (router.push), which
@@ -80,7 +111,7 @@ function CartPageContent() {
     return () => clearInterval(interval)
   }, [expiresAt])
 
-  if (!mounted || status === 'loading') return <PageSpinner />
+  if (!mounted || status === 'loading' || isCartLoading) return <PageSpinner />
 
   const subtotal = getSubtotal()
   const tax = subtotal * 0.10
@@ -88,6 +119,34 @@ function CartPageContent() {
 
   const handleDeleteConfirm = () => {
     if (itemToDelete) { removeItem(itemToDelete); setItemToDelete(null) }
+  }
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const toggleSelectAll = () => {
+    setSelectedIds(prev => prev.size === items.length ? new Set() : new Set(items.map(i => i.id)))
+  }
+
+  const handleBulkDeleteConfirm = async () => {
+    setIsBulkDeleting(true)
+    try {
+      for (const id of selectedIds) {
+        await removeItem(id)
+      }
+      setSelectedIds(new Set())
+    } catch (error) {
+      toast.error(formatCartError(error))
+    } finally {
+      setIsBulkDeleting(false)
+      setItemToDelete(null)
+    }
   }
 
   const formatCartError = (error: unknown) => {
@@ -210,9 +269,19 @@ function CartPageContent() {
                 Stock reserved for: {timeLeft}
               </div>
             )}
+            {selectedIds.size > 0 && (
+              <button
+                onClick={() => setItemToDelete('__selected__')}
+                title="Delete selected items"
+                className="text-xs text-red-500 hover:text-red-700 flex items-center gap-1 font-medium bg-red-100 hover:bg-red-200 px-2.5 py-1.5 rounded-lg transition-colors cursor-pointer"
+              >
+                <Trash2 className="w-3.5 h-3.5" /> Delete Selected ({selectedIds.size})
+              </button>
+            )}
             <button
               onClick={() => setItemToDelete('__all__')}
-              className="text-xs text-red-400 hover:text-red-600 flex items-center gap-1 font-medium bg-red-50 hover:bg-red-100 px-2.5 py-1.5 rounded-lg transition-colors"
+              title="Remove all items from cart"
+              className="text-xs text-red-400 hover:text-red-600 flex items-center gap-1 font-medium bg-red-50 hover:bg-red-100 px-2.5 py-1.5 rounded-lg transition-colors cursor-pointer"
             >
               <Trash2 className="w-3.5 h-3.5" /> Clear all
             </button>
@@ -223,6 +292,13 @@ function CartPageContent() {
         <div className="sm:hidden space-y-3">
           {items.map(item => (
             <div key={item.id} className="border border-gray-200 rounded-xl p-3 flex gap-3">
+              <input
+                type="checkbox"
+                checked={selectedIds.has(item.id)}
+                onChange={() => toggleSelect(item.id)}
+                title="Select item"
+                className="mt-1 w-4 h-4 shrink-0 accent-blue-500 cursor-pointer"
+              />
               <div className="relative w-14 h-14 bg-gray-50 rounded-lg overflow-hidden shrink-0">
                 {item.imageUrl ? (
                   <Image src={item.imageUrl} alt={item.name} fill className="object-cover" sizes="56px" />
@@ -231,7 +307,7 @@ function CartPageContent() {
               <div className="flex-1 min-w-0">
                 <div className="flex items-start justify-between gap-2">
                   <p className="text-sm font-medium text-gray-800 line-clamp-2 leading-tight">{item.name}</p>
-                  <button onClick={() => setItemToDelete(item.id)} className="text-red-400 hover:text-red-600 p-1 -mr-1 -mt-1 shrink-0">
+                  <button onClick={() => setItemToDelete(item.id)} title="Remove item" className="text-red-400 hover:text-red-600 p-1 -mr-1 -mt-1 shrink-0">
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
@@ -242,20 +318,25 @@ function CartPageContent() {
                 )}
                 <div className="flex items-center justify-between mt-2">
                   <div className="flex items-center border border-gray-200 rounded-lg bg-white">
-                    <button onClick={() => item.quantity <= 1 ? setItemToDelete(item.id) : handleQuantityChange(item.id, item.quantity - 1)} className="p-1.5 text-blue-500 hover:bg-blue-50 rounded-l-lg transition-colors">
+                    <button onClick={() => item.quantity <= 1 ? setItemToDelete(item.id) : handleQuantityChange(item.id, item.quantity - 1)} title="Decrease quantity" className="p-1.5 text-blue-500 hover:bg-blue-50 rounded-l-lg transition-colors">
                       <Minus className="w-3 h-3" />
                     </button>
                     <span className="w-7 text-center text-xs font-semibold text-gray-900">
                       {String(item.quantity).padStart(2, '0')}
                     </span>
-                    <button onClick={() => handleQuantityChange(item.id, item.quantity + 1)} className="p-1.5 text-blue-500 hover:bg-blue-50 rounded-r-lg transition-colors">
+                    <button
+                      onClick={() => handleQuantityChange(item.id, item.quantity + 1)}
+                      disabled={item.maxStock <= 0}
+                      title={item.maxStock <= 0 ? 'No more stock available' : 'Increase quantity'}
+                      className="p-1.5 text-blue-500 hover:bg-blue-50 rounded-r-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+                    >
                       <Plus className="w-3 h-3" />
                     </button>
                   </div>
                   <div className="text-right">
-                    <span className="text-sm font-semibold text-gray-900">Rs {(item.price * item.quantity).toLocaleString()}</span>
+                    <span className="text-sm font-semibold text-gray-900">Rs {formatPrice(item.price * item.quantity)}</span>
                     {item.quantity > 1 && (
-                      <p className="text-[11px] text-gray-400">Rs {item.price.toLocaleString()} each</p>
+                      <p className="text-[11px] text-gray-400">Rs {formatPrice(item.price)} each</p>
                     )}
                   </div>
                 </div>
@@ -269,7 +350,16 @@ function CartPageContent() {
           <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="border-b border-gray-200 text-xs text-gray-400 bg-gray-50/50">
-                  <th className="pl-6 py-3 font-medium">Product</th>
+                  <th className="py-3 font-medium w-10 text-center">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.size === items.length}
+                      onChange={toggleSelectAll}
+                      title="Select all items"
+                      className="w-4 h-4 accent-blue-500 cursor-pointer"
+                    />
+                  </th>
+                  <th className="py-3 font-medium">Product</th>
                   <th className="py-3 font-medium text-center">Color</th>
                   <th className="py-3 font-medium text-center">Size</th>
                   <th className="py-3 font-medium text-center w-28">Qty</th>
@@ -281,7 +371,16 @@ function CartPageContent() {
               <tbody className="divide-y divide-gray-100">
                 {items.map(item => (
                   <tr key={item.id} className="text-xs sm:text-sm hover:bg-gray-50/30 transition-colors">
-                    <td className="py-4 pl-6">
+                    <td className="py-4 text-center">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(item.id)}
+                        onChange={() => toggleSelect(item.id)}
+                        title="Select item"
+                        className="w-4 h-4 accent-blue-500 cursor-pointer"
+                      />
+                    </td>
+                    <td className="py-4">
                       <div className="flex items-center gap-3">
                         <div className="relative w-10 h-10 bg-gray-50 rounded-lg overflow-hidden shrink-0">
                           {item.imageUrl ? (
@@ -312,25 +411,30 @@ function CartPageContent() {
                     </td>
                     <td className="py-4">
                       <div className="flex items-center justify-center border border-gray-200 rounded-lg w-fit mx-auto bg-white">
-                        <button onClick={() => item.quantity <= 1 ? setItemToDelete(item.id) : handleQuantityChange(item.id, item.quantity - 1)} className="p-1.5 text-blue-500 hover:bg-blue-50 rounded-l-lg transition-colors">
+                        <button onClick={() => item.quantity <= 1 ? setItemToDelete(item.id) : handleQuantityChange(item.id, item.quantity - 1)} title="Decrease quantity" className="p-1.5 text-blue-500 hover:bg-blue-50 rounded-l-lg transition-colors">
                           <Minus className="w-3 h-3" />
                         </button>
                         <span className="w-7 text-center text-xs font-semibold text-gray-900">
                           {String(item.quantity).padStart(2, '0')}
                         </span>
-                        <button onClick={() => handleQuantityChange(item.id, item.quantity + 1)} className="p-1.5 text-blue-500 hover:bg-blue-50 rounded-r-lg transition-colors">
+                        <button
+                          onClick={() => handleQuantityChange(item.id, item.quantity + 1)}
+                          disabled={item.maxStock <= 0}
+                          title={item.maxStock <= 0 ? 'No more stock available' : 'Increase quantity'}
+                          className="p-1.5 text-blue-500 hover:bg-blue-50 rounded-r-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+                        >
                           <Plus className="w-3 h-3" />
                         </button>
                       </div>
                     </td>
                     <td className="py-4 text-center text-gray-600 whitespace-nowrap">
-                      Rs {item.price.toLocaleString()}
+                      Rs {formatPrice(item.price)}
                     </td>
                     <td className="py-4 text-center font-semibold text-gray-900 whitespace-nowrap">
-                      Rs {(item.price * item.quantity).toLocaleString()}
+                      Rs {formatPrice(item.price * item.quantity)}
                     </td>
                     <td className="py-4 text-center">
-                      <button onClick={() => setItemToDelete(item.id)} className="text-red-400 hover:text-red-600 p-1.5 rounded-md hover:bg-red-50 transition-colors">
+                      <button onClick={() => setItemToDelete(item.id)} title="Remove item" className="text-red-400 hover:text-red-600 p-1.5 rounded-md hover:bg-red-50 transition-colors cursor-pointer">
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </td>
@@ -345,15 +449,15 @@ function CartPageContent() {
           <div className="w-full sm:w-64 space-y-2">
             <div className="flex justify-between text-sm text-gray-500">
               <span>Sub Total:</span>
-              <span className="font-semibold text-gray-900">Rs {subtotal.toLocaleString()}</span>
+              <span className="font-semibold text-gray-900">Rs {formatPrice(subtotal)}</span>
             </div>
             <div className="flex justify-between text-sm text-gray-500">
               <span>Tax (10%):</span>
-              <span className="font-semibold text-gray-900">Rs {tax.toLocaleString()}</span>
+              <span className="font-semibold text-gray-900">Rs {formatPrice(tax)}</span>
             </div>
             <div className="flex justify-between text-sm font-bold text-gray-900 pt-2 border-t border-gray-100">
               <span>Total:</span>
-              <span>Rs {total.toLocaleString()}</span>
+              <span>Rs {formatPrice(total)}</span>
             </div>
             <button
               onClick={handlePlaceOrderClick}
@@ -374,27 +478,35 @@ function CartPageContent() {
       {itemToDelete && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl p-6 w-full max-w-xs text-center shadow-xl">
-            <h3 className="text-lg font-semibold text-blue-500 mb-1">Remove Item</h3>
+            <h3 className="text-lg font-semibold text-blue-500 mb-1">
+              {itemToDelete === '__selected__' ? 'Remove Selected Items' : 'Remove Item'}
+            </h3>
             <div className="flex justify-center my-4">
               <svg className="w-14 h-14 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
               </svg>
             </div>
             <p className="text-sm font-medium text-gray-800 mb-5">
-              {itemToDelete === '__all__' ? 'Clear all items from your cart?' : 'Remove this item from your cart?'}
+              {itemToDelete === '__all__'
+                ? 'Clear all items from your cart?'
+                : itemToDelete === '__selected__'
+                  ? `Remove ${selectedIds.size} selected item${selectedIds.size !== 1 ? 's' : ''} from your cart?`
+                  : 'Remove this item from your cart?'}
             </p>
             <div className="flex justify-center gap-4">
-              <button onClick={() => setItemToDelete(null)} className="px-6 py-2 border border-blue-500 text-blue-500 rounded-lg text-sm font-medium hover:bg-blue-50">
+              <button onClick={() => setItemToDelete(null)} disabled={isBulkDeleting} className="px-6 py-2 border border-blue-500 text-blue-500 rounded-lg text-sm font-medium hover:bg-blue-50 disabled:opacity-50 cursor-pointer">
                 Cancel
               </button>
               <button
                 onClick={() => {
                   if (itemToDelete === '__all__') { clearCart(); setItemToDelete(null) }
+                  else if (itemToDelete === '__selected__') { handleBulkDeleteConfirm() }
                   else handleDeleteConfirm()
                 }}
-                className="px-6 py-2 bg-blue-500 text-white rounded-lg text-sm font-medium hover:bg-blue-600"
+                disabled={isBulkDeleting}
+                className="px-6 py-2 bg-blue-500 text-white rounded-lg text-sm font-medium hover:bg-blue-600 disabled:opacity-50 flex items-center justify-center gap-2 min-w-[88px] cursor-pointer"
               >
-                Confirm
+                {isBulkDeleting ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Confirm'}
               </button>
             </div>
           </div>
@@ -407,7 +519,7 @@ function CartPageContent() {
           <div className="bg-white rounded-xl p-5 w-full max-w-sm shadow-xl">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-base font-semibold text-gray-900">Shipping Address</h3>
-              <button onClick={() => setShowAddressModal(false)} className="text-gray-400 hover:text-gray-600">
+              <button onClick={() => setShowAddressModal(false)} title="Close" className="text-gray-400 hover:text-gray-600">
                 <X className="w-4 h-4" />
               </button>
             </div>

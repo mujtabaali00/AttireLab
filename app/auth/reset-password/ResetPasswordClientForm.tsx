@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { resetPasswordSchema } from "@/lib/validations/auth.schema"
-import { Input } from "@/components/ui/Input"
+import { PasswordInput } from "@/components/ui/PasswordInput"
 import { Button } from "@/components/ui/Button"
 import { Label } from "@/components/ui/Label"
 import { z } from "zod"
@@ -79,23 +79,23 @@ export function ResetPasswordClientForm({ token }: { token: string }) {
 
         <div className="space-y-1">
           <Label htmlFor="password">Enter new password</Label>
-          <Input
+          <PasswordInput
             id="password"
-            placeholder="enter password"
-            type="password"
+            placeholder="Enter password"
             {...register("password")}
           />
-          {errors.password && (
+          {errors.password ? (
             <p className="text-xs text-red-500">{errors.password.message}</p>
+          ) : (
+            <p className="text-xs text-gray-400">At least 8 characters, including one special character</p>
           )}
         </div>
 
         <div className="space-y-1">
           <Label htmlFor="confirmPassword">Confirm password</Label>
-          <Input
+          <PasswordInput
             id="confirmPassword"
-            placeholder="confirm password"
-            type="password"
+            placeholder="Confirm password"
             {...register("confirmPassword")}
           />
           {errors.confirmPassword && (

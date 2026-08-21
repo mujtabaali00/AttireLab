@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react'
 import Image from 'next/image'
 import { useCartStore } from '@/lib/store/cart.store'
 import { toast } from 'react-hot-toast'
+import { formatPrice } from '@/lib/format'
 
 export interface ProductSpecification {
   id: string
@@ -201,7 +202,7 @@ export function ProductCard({ product }: { product: SerializedProduct }) {
         <div className="flex items-baseline gap-1">
           <span className="text-sm text-gray-600">Price:</span>
           <span className="text-sm font-bold text-blue-600">
-            Rs {currentPrice.toLocaleString()}
+            Rs {formatPrice(currentPrice)}
           </span>
         </div>
 
@@ -276,6 +277,7 @@ export function ProductCard({ product }: { product: SerializedProduct }) {
             <button
               onClick={() => setQty(q => Math.max(1, q - 1))}
               disabled={isTotalOutOfStock || isSelectionOutOfStock}
+              title="Decrease quantity"
               className="w-7 h-7 flex items-center justify-center text-gray-600 hover:bg-gray-100 disabled:opacity-40 text-base font-medium transition-colors"
             >
               −
@@ -286,6 +288,7 @@ export function ProductCard({ product }: { product: SerializedProduct }) {
             <button
               onClick={() => setQty(q => Math.min(maxAllowedQty || 999, q + 1))}
               disabled={isTotalOutOfStock || isSelectionOutOfStock || displayedQty >= maxAllowedQty}
+              title="Increase quantity"
               className="w-7 h-7 flex items-center justify-center text-gray-600 hover:bg-gray-100 disabled:opacity-40 text-base font-medium transition-colors"
             >
               +

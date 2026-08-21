@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Search, ChevronDown, Loader2 } from 'lucide-react'
 import { ProductCard, type SerializedProduct } from './ProductCard'
 import { APP_CONSTANTS } from '@/lib/constants'
@@ -24,45 +24,127 @@ const SORT_OPTIONS = [
 ]
 
 const BATCH_SIZE = APP_CONSTANTS.PRODUCTS.LAZY_BATCH_SIZE
+// How many extra batches stay mounted behind the loading edge before the
+// far one gets dropped from the DOM. Dropped batches stay in pageCache, so
+// scrolling back up re-renders them instantly with no re-fetch.
+const WINDOW_BATCHES = 2
+
+// Variant prices can be higher or lower than the base price — sort by the
+// cheapest price a shopper could actually pay for the product, not the base.
+function getEffectivePrice(product: SerializedProduct): number {
+  if (product.specifications && product.specifications.length > 0) {
+    const variantPrices = product.specifications
+      .map(s => s.price)
+      .filter((p): p is number => p != null)
+    if (variantPrices.length > 0) return Math.min(...variantPrices)
+  }
+  return product.price
+}
 
 export function ProductList({ initialProducts, categories, initialHasMore }: ProductListProps) {
-  const [products, setProducts] = useState(initialProducts)
-  const [page, setPage] = useState(1) // page 1 was already loaded server-side
+  // Every fetched page stays here so scrolling back up never needs a re-fetch.
+  const [pageCache, setPageCache] = useState<Map<number, SerializedProduct[]>>(() => new Map([[1, initialProducts]]))
+  const [minPage, setMinPage] = useState(1)
+  const [maxPage, setMaxPage] = useState(1)
   const [hasMore, setHasMore] = useState(initialHasMore)
   const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [search, setSearch] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('all')
   const [sortBy, setSortBy] = useState('newest')
 
-  const sentinelRef = useRef<HTMLDivElement>(null)
+  const bottomSentinelRef = useRef<HTMLDivElement>(null)
+  const topSentinelRef = useRef<HTMLDivElement>(null)
+  const gridRef = useRef<HTMLDivElement>(null)
   const loadingRef = useRef(false)
+
+  // Whenever a batch is dropped from (or restored to) the top of the grid,
+  // the content above the viewport changes height and the browser would
+  // otherwise visibly jump. We capture a "before" position of an element
+  // that survives the update, then correct scrollY by however much that
+  // same element actually moved — a manual scroll anchor.
+  const pendingAnchorRef = useRef<{ el: HTMLElement; top: number } | null>(null)
+
+  const captureScrollAnchor = useCallback((anchorIndex: number) => {
+    const grid = gridRef.current
+    const el = grid?.children[anchorIndex] as HTMLElement | undefined
+    if (!el) return
+    pendingAnchorRef.current = { el, top: el.getBoundingClientRect().top }
+  }, [])
+
+  useLayoutEffect(() => {
+    const pending = pendingAnchorRef.current
+    if (!pending) return
+    pendingAnchorRef.current = null
+    const delta = pending.el.getBoundingClientRect().top - pending.top
+    if (delta !== 0) window.scrollBy(0, delta)
+  })
+
+  // While actively searching/filtering — or sorted by anything other than
+  // fetch order — don't drop batches. Sorting reshuffles which items land
+  // near the top of the grid, so "the oldest-fetched page" is no longer the
+  // same thing as "the items currently at the top"; dropping it could make
+  // arbitrary, still-matching products vanish from the middle of the list.
+  const isFiltering = selectedCategory !== 'all' || search.trim() !== '' || sortBy !== 'newest'
+  const effectiveMinPage = isFiltering ? 1 : minPage
+
+  const products = useMemo(() => {
+    const list: SerializedProduct[] = []
+    for (let p = effectiveMinPage; p <= maxPage; p++) {
+      list.push(...(pageCache.get(p) ?? []))
+    }
+    return list
+  }, [pageCache, effectiveMinPage, maxPage])
 
   const loadMore = useCallback(async () => {
     if (loadingRef.current || !hasMore) return
     loadingRef.current = true
     setIsLoadingMore(true)
     try {
-      const nextPage = page + 1
-      const res = await fetch(`/api/products?page=${nextPage}&limit=${BATCH_SIZE}`)
-      const data = await res.json()
-      if (data.data) {
-        const newProducts = data.data.products as SerializedProduct[]
-        setProducts(prev => [...prev, ...newProducts])
-        setPage(nextPage)
+      const nextPage = maxPage + 1
+      let pageData = pageCache.get(nextPage)
+      if (!pageData) {
+        const res = await fetch(`/api/products?page=${nextPage}&limit=${BATCH_SIZE}`)
+        const data = await res.json()
+        if (!data.data) {
+          setHasMore(false)
+          return
+        }
+        pageData = data.data.products as SerializedProduct[]
+        setPageCache(prev => new Map(prev).set(nextPage, pageData!))
         setHasMore(nextPage * BATCH_SIZE < data.data.total)
-      } else {
-        setHasMore(false)
       }
+      setMaxPage(nextPage)
+      setMinPage(prev => {
+        const target = Math.max(prev, nextPage - WINDOW_BATCHES)
+        if (target > prev && !isFiltering) {
+          // The page at `prev` is about to be dropped — anchor on the item
+          // right after it (the new first-rendered item) before it happens.
+          captureScrollAnchor(pageCache.get(prev)?.length ?? BATCH_SIZE)
+        }
+        return target
+      })
     } catch {
       // Leave hasMore as-is — scrolling again will retry.
     } finally {
       loadingRef.current = false
       setIsLoadingMore(false)
     }
-  }, [hasMore, page])
+  }, [hasMore, maxPage, pageCache, isFiltering, captureScrollAnchor])
+
+  // Bring back a previously-dropped batch when scrolling back up — always
+  // already cached, so this is instant with no network request.
+  const loadPrevious = useCallback(() => {
+    if (minPage <= 1) return
+    // The current first-rendered item is about to be pushed down by the
+    // batch we're restoring above it — anchor on it before that happens.
+    captureScrollAnchor(0)
+    const target = minPage - 1
+    setMaxPage(prevMax => Math.min(prevMax, target + WINDOW_BATCHES))
+    setMinPage(target)
+  }, [minPage, captureScrollAnchor])
 
   useEffect(() => {
-    const sentinel = sentinelRef.current
+    const sentinel = bottomSentinelRef.current
     if (!sentinel) return
     const observer = new IntersectionObserver(
       entries => {
@@ -73,6 +155,19 @@ export function ProductList({ initialProducts, categories, initialHasMore }: Pro
     observer.observe(sentinel)
     return () => observer.disconnect()
   }, [loadMore])
+
+  useEffect(() => {
+    const sentinel = topSentinelRef.current
+    if (!sentinel || isFiltering) return
+    const observer = new IntersectionObserver(
+      entries => {
+        if (entries[0].isIntersecting) loadPrevious()
+      },
+      { rootMargin: '600px' }
+    )
+    observer.observe(sentinel)
+    return () => observer.disconnect()
+  }, [loadPrevious, isFiltering])
 
   const filtered = useMemo(() => {
     let list = [...products]
@@ -86,8 +181,8 @@ export function ProductList({ initialProducts, categories, initialHasMore }: Pro
       list = list.filter(p => p.name.toLowerCase().includes(q))
     }
 
-    if (sortBy === 'price_asc') list.sort((a, b) => a.price - b.price)
-    else if (sortBy === 'price_desc') list.sort((a, b) => b.price - a.price)
+    if (sortBy === 'price_asc') list.sort((a, b) => getEffectivePrice(a) - getEffectivePrice(b))
+    else if (sortBy === 'price_desc') list.sort((a, b) => getEffectivePrice(b) - getEffectivePrice(a))
 
     return list
   }, [products, search, selectedCategory, sortBy])
@@ -147,13 +242,16 @@ export function ProductList({ initialProducts, categories, initialHasMore }: Pro
         </div>
       </div>
 
+      {/* Top sentinel — scrolling back up past here re-mounts the previous (cached) batch */}
+      <div ref={topSentinelRef} className="h-px" />
+
       {/* Products Grid — 4 columns on desktop so each batch of 8 fills two rows */}
       {filtered.length === 0 ? (
         <div className="text-center py-16 text-gray-400">
           <p className="text-sm">No products found.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div ref={gridRef} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {filtered.map(product => (
             <ProductCard key={product.id} product={product} />
           ))}
@@ -161,7 +259,7 @@ export function ProductList({ initialProducts, categories, initialHasMore }: Pro
       )}
 
       {/* Infinite scroll trigger */}
-      <div ref={sentinelRef} className="h-px" />
+      <div ref={bottomSentinelRef} className="h-px" />
 
       {isLoadingMore && (
         <div className="flex items-center justify-center gap-2 py-6 text-sm text-gray-400">

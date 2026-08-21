@@ -9,6 +9,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { loginSchema } from "@/lib/validations/auth.schema"
 import { useCartStore } from "@/lib/store/cart.store"
 import { Input } from "@/components/ui/Input"
+import { PasswordInput } from "@/components/ui/PasswordInput"
 import { Button } from "@/components/ui/Button"
 import { Label } from "@/components/ui/Label"
 import { Loader2 } from "lucide-react"
@@ -155,10 +156,9 @@ function LoginForm() {
 
         <div className="space-y-1">
           <Label htmlFor="password">Password</Label>
-          <Input
+          <PasswordInput
             id="password"
             placeholder="Enter your password"
-            type="password"
             {...register("password")}
           />
           {errors.password && (

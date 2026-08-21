@@ -134,6 +134,7 @@ export default function AdminCategoriesPage() {
                 <button
                   onClick={() => handleDelete(cat.id)}
                   disabled={deletingId === cat.id}
+                  title="Delete category"
                   className="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
                 >
                   {deletingId === cat.id ? (
