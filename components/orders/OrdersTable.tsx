@@ -1,13 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import Link from 'next/link'
-import { ArrowUpRight, Loader2 } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { ArrowUpRight, Loader2, Search } from 'lucide-react'
 import { toast } from 'react-hot-toast'
-
-// Map UI Statuses to DB Statuses
-// DB Enum: PENDING, PROCESSING, SHIPPED, DELIVERED, CANCELLED
-// UI Strings: In Progress (PROCESSING), Dispatched (SHIPPED), Delivered (DELIVERED), Rejected (CANCELLED)
+import { getAllowedNextStatuses, ORDER_STATUS_LABELS, ORDER_STATUS_SOLID_COLOR } from '@/lib/order-status'
+import { formatPrice } from '@/lib/format'
+import { TablePagination } from '@/components/ui/TablePagination'
 
 export type DBOrderStatus = 'PENDING' | 'PROCESSING' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED'
 
@@ -25,22 +25,25 @@ interface OrdersTableProps {
   isAdmin?: boolean
 }
 
-const statusMap: Record<DBOrderStatus, { label: string, color: string }> = {
-  PENDING: { label: 'Pending', color: 'bg-gray-100 text-gray-700' },
-  PROCESSING: { label: 'In Progress', color: 'bg-yellow-400 text-white' }, // match UI screenshot yellow
-  SHIPPED: { label: 'Dispatched', color: 'bg-blue-500 text-white' }, // match UI screenshot blue
-  DELIVERED: { label: 'Delivered', color: 'bg-green-500 text-white' }, // match UI screenshot green
-  CANCELLED: { label: 'Rejected', color: 'bg-red-500 text-white' } // match UI screenshot red
-}
-
 export function OrdersTable({ orders, isAdmin = false }: OrdersTableProps) {
+  const router = useRouter()
   const [updatingId, setUpdatingId] = useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
+
+  const filteredOrders = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase()
+    if (!q) return orders
+    return orders.filter(order =>
+      order.id.slice(-6).toLowerCase().includes(q) ||
+      (order.userName ?? '').toLowerCase().includes(q)
+    )
+  }, [orders, searchQuery])
 
   // Pagination (simple client side for now)
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 10
-  const totalPages = Math.max(1, Math.ceil(orders.length / itemsPerPage))
-  const paginatedOrders = orders.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+  const totalPages = Math.max(1, Math.ceil(filteredOrders.length / itemsPerPage))
+  const paginatedOrders = filteredOrders.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
 
   const handleStatusChange = async (orderId: string, newStatus: string) => {
     setUpdatingId(orderId)
@@ -51,7 +54,7 @@ export function OrdersTable({ orders, isAdmin = false }: OrdersTableProps) {
         body: JSON.stringify({ status: newStatus })
       })
       if (res.ok) {
-        window.location.reload()
+        router.refresh()
       } else {
         const data = await res.json().catch(() => null)
         toast.error(data?.error || 'Failed to update status')
@@ -64,7 +67,22 @@ export function OrdersTable({ orders, isAdmin = false }: OrdersTableProps) {
   }
 
   return (
-    <div className={`bg-white flex flex-col min-h-[60vh] ${isAdmin ? 'rounded-lg shadow-sm border border-gray-100' : ''}`}>
+    <div className="bg-white flex flex-col min-h-[60vh] rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+
+      {isAdmin && (
+        <div className="px-4 py-3 border-b border-gray-100">
+          <div className="relative w-full sm:max-w-xs">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search by order # or customer..."
+              value={searchQuery}
+              onChange={e => { setSearchQuery(e.target.value); setCurrentPage(1) }}
+              className="w-full pl-9 pr-4 py-1.5 text-sm border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-400 focus:border-blue-400 placeholder-gray-400"
+            />
+          </div>
+        </div>
+      )}
 
       {/* Table */}
       <div className="overflow-x-auto flex-grow">
@@ -76,7 +94,7 @@ export function OrdersTable({ orders, isAdmin = false }: OrdersTableProps) {
               {isAdmin && (
                 <th className="px-5 py-4 text-xs font-semibold text-gray-500 whitespace-nowrap">User</th>
               )}
-              <th className="px-5 py-4 text-xs font-semibold text-gray-500 whitespace-nowrap">Number of Product(s)</th>
+              <th className="px-5 py-4 text-xs font-semibold text-gray-500 whitespace-nowrap">Number of Products</th>
               <th className="px-5 py-4 text-xs font-semibold text-gray-500 whitespace-nowrap">Amount</th>
               <th className="px-5 py-4 text-xs font-semibold text-gray-500 whitespace-nowrap">Order Status</th>
               <th className="px-5 py-4 text-xs font-semibold text-gray-500 whitespace-nowrap w-16 text-center">Actions</th>
@@ -84,7 +102,7 @@ export function OrdersTable({ orders, isAdmin = false }: OrdersTableProps) {
           </thead>
           <tbody className="divide-y divide-gray-100">
             {paginatedOrders.map(order => {
-              const statusInfo = statusMap[order.status]
+              const statusInfo = { label: ORDER_STATUS_LABELS[order.status], color: ORDER_STATUS_SOLID_COLOR[order.status] }
               const displayDate = new Date(order.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' })
               const orderNum = order.id.slice(-6).toUpperCase()
 
@@ -96,7 +114,7 @@ export function OrdersTable({ orders, isAdmin = false }: OrdersTableProps) {
                     <td className="px-5 py-4 text-sm text-gray-900 whitespace-nowrap">{order.userName}</td>
                   )}
                   <td className="px-5 py-4 text-sm text-gray-600 whitespace-nowrap">{order.itemsCount}</td>
-                  <td className="px-5 py-4 text-sm text-gray-600 whitespace-nowrap">Rs {Number(order.total).toLocaleString()}</td>
+                  <td className="px-5 py-4 text-sm text-gray-600 whitespace-nowrap">Rs {formatPrice(Number(order.total))}</td>
                   <td className="px-5 py-4 text-sm whitespace-nowrap">
                     {isAdmin ? (
                       <div className="flex items-center gap-2">
@@ -114,13 +132,12 @@ export function OrdersTable({ orders, isAdmin = false }: OrdersTableProps) {
                             value={order.status}
                             onChange={(e) => handleStatusChange(order.id, e.target.value)}
                             disabled={updatingId === order.id}
+                            title="Change order status"
                             className={`text-xs font-medium px-2 py-1.5 rounded outline-none border-none cursor-pointer ${statusInfo.color}`}
                           >
-                            <option value="PENDING" className="bg-white text-gray-900">Pending</option>
-                            <option value="PROCESSING" className="bg-white text-gray-900">In Progress</option>
-                            <option value="SHIPPED" className="bg-white text-gray-900">Dispatched</option>
-                            <option value="DELIVERED" className="bg-white text-gray-900">Delivered</option>
-                            <option value="CANCELLED" className="bg-white text-gray-900">Rejected</option>
+                            {Array.from(new Set([order.status, ...getAllowedNextStatuses(order.status)])).map(s => (
+                              <option key={s} value={s} className="bg-white text-gray-900">{ORDER_STATUS_LABELS[s]}</option>
+                            ))}
                           </select>
                         )}
                       </div>
@@ -154,48 +171,12 @@ export function OrdersTable({ orders, isAdmin = false }: OrdersTableProps) {
         </table>
       </div>
 
-      {/* Pagination Footer */}
-      <div className="flex items-center justify-between px-5 py-4 border-t border-gray-100 mt-auto">
-        <span className="text-sm text-gray-500">
-          {orders.length} Total Count
-        </span>
-
-        {orders.length > 0 && (
-          <div className="flex items-center border border-gray-200 rounded divide-x divide-gray-200">
-            <button
-              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-              disabled={currentPage === 1}
-              className="px-3 py-1.5 text-sm text-blue-500 hover:bg-gray-50 disabled:opacity-50 disabled:hover:bg-transparent"
-            >
-              Previous
-            </button>
-
-            {Array.from({ length: totalPages }).map((_, i) => {
-              const page = i + 1
-              return (
-                <button
-                  key={page}
-                  onClick={() => setCurrentPage(page)}
-                  className={`px-3 py-1.5 text-sm transition-colors ${currentPage === page
-                      ? 'bg-blue-50 text-blue-600 font-medium'
-                      : 'text-blue-500 hover:bg-gray-50'
-                    }`}
-                >
-                  {page}
-                </button>
-              )
-            })}
-
-            <button
-              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-              disabled={currentPage === totalPages}
-              className="px-3 py-1.5 text-sm text-blue-500 hover:bg-gray-50 disabled:opacity-50 disabled:hover:bg-transparent"
-            >
-              Next
-            </button>
-          </div>
-        )}
-      </div>
+      <TablePagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        totalCount={filteredOrders.length}
+        onPageChange={setCurrentPage}
+      />
     </div>
   )
 }

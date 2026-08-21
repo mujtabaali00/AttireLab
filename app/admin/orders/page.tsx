@@ -30,7 +30,7 @@ export default async function AdminOrdersPage() {
   const orderRows: OrderRow[] = orders.map(order => ({
     id: order.id,
     createdAt: order.createdAt.toISOString(),
-    itemsCount: order.items.reduce((acc, item) => acc + item.quantity, 0),
+    itemsCount: order.items.length,
     total: Number(order.total),
     status: order.status as DBOrderStatus,
     userName: order.user.name || 'Guest'
@@ -72,7 +72,7 @@ export default async function AdminOrdersPage() {
       </div>
 
       <div className="mb-4">
-        <h2 className="text-xl font-bold text-gray-900">Orders</h2>
+        <h1 className="text-xl font-bold text-gray-900">Orders</h1>
       </div>
 
       <OrdersTable orders={orderRows} isAdmin={true} />

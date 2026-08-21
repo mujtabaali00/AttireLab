@@ -8,6 +8,7 @@ import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { loginSchema } from "@/lib/validations/auth.schema"
 import { Input } from "@/components/ui/Input"
+import { PasswordInput } from "@/components/ui/PasswordInput"
 import { Button } from "@/components/ui/Button"
 import { Label } from "@/components/ui/Label"
 import { ShieldCheck } from "lucide-react"
@@ -91,10 +92,9 @@ export default function AdminLoginPage() {
 
         <div className="space-y-1">
           <Label htmlFor="password">Password</Label>
-          <Input
+          <PasswordInput
             id="password"
             placeholder="••••••••"
-            type="password"
             {...register("password")}
           />
           {errors.password && (
@@ -102,8 +102,8 @@ export default function AdminLoginPage() {
           )}
         </div>
 
-        <Button disabled={isLoading} type="submit" className="w-full bg-gray-900 hover:bg-gray-800">
-          {isLoading ? "Authenticating..." : "Sign in to Dashboard"}
+        <Button isLoading={isLoading} type="submit" className="w-full bg-gray-900 hover:bg-gray-800">
+          Sign in to Dashboard
         </Button>
       </form>
 

@@ -21,7 +21,7 @@ export default async function OrdersPage() {
   const orderRows: OrderRow[] = orders.map(order => ({
     id: order.id,
     createdAt: order.createdAt.toISOString(),
-    itemsCount: order.items.reduce((acc, item) => acc + item.quantity, 0),
+    itemsCount: order.items.length,
     total: Number(order.total),
     status: order.status as DBOrderStatus
   }))
@@ -30,14 +30,12 @@ export default async function OrdersPage() {
     <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
       {/* Title */}
       <div className="mb-8">
-        <Link href="/" className="inline-flex items-center text-blue-500 hover:text-blue-600 font-medium text-[28px] tracking-tight transition-colors">
+        <Link href="/" className="inline-flex items-center text-blue-500 hover:text-blue-600 font-medium text-2xl tracking-tight transition-colors">
           <span className="mr-3 font-normal">&larr;</span> Orders
         </Link>
       </div>
 
-      <div className="border border-gray-200">
-        <OrdersTable orders={orderRows} isAdmin={false} />
-      </div>
+      <OrdersTable orders={orderRows} isAdmin={false} />
     </div>
   )
 }

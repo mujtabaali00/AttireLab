@@ -8,6 +8,7 @@ import { useEffect, useRef, useState, type UIEvent } from 'react'
 import { useSession, signOut } from 'next-auth/react'
 import { usePathname } from 'next/navigation'
 import { formatDistanceToNow } from 'date-fns'
+import { APP_CONSTANTS } from '@/lib/constants'
 
 interface Notification {
   id: string
@@ -75,6 +76,11 @@ export function Navbar() {
   const [unreadCount, setUnreadCount] = useState(0)
   const [notifTab, setNotifTab] = useState<'unread' | 'all'>('unread')
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
+
+  const handleLogout = () => {
+    try { localStorage.removeItem(APP_CONSTANTS.CHECKOUT.ADDRESSES_STORAGE_KEY) } catch {}
+    signOut({ callbackUrl: '/auth/login' })
+  }
 
   const menuRef = useRef<HTMLDivElement>(null)
   const notifRef = useRef<HTMLDivElement>(null)
@@ -182,6 +188,7 @@ export function Navbar() {
             <div className="relative" ref={notifRef}>
               <button
                 onClick={() => setNotifOpen(!notifOpen)}
+                title="Notifications"
                 className="relative text-gray-400 hover:text-blue-500 transition-colors p-1"
               >
                 <Bell className="w-5 h-5" />
@@ -241,6 +248,7 @@ export function Navbar() {
             <div className="relative" ref={menuRef}>
               <button
                 onClick={() => setMenuOpen(v => !v)}
+                title="Account menu"
                 className="flex items-center gap-2 hover:bg-gray-50 px-2 py-1 rounded-lg transition-colors"
               >
                 <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white text-xs font-bold shrink-0">
@@ -271,7 +279,7 @@ export function Navbar() {
       {showLogoutConfirm && (
         <LogoutConfirmModal
           onCancel={() => setShowLogoutConfirm(false)}
-          onConfirm={() => signOut({ callbackUrl: '/auth/login' })}
+          onConfirm={handleLogout}
         />
       )}
       </>
@@ -304,6 +312,7 @@ export function Navbar() {
               <div className="relative" ref={notifRef}>
                 <button
                   onClick={() => setNotifOpen(!notifOpen)}
+                  title="Notifications"
                   className="relative text-gray-500 hover:text-blue-500 transition-colors p-1"
                 >
                   <Bell className="w-5 h-5" />
@@ -363,6 +372,7 @@ export function Navbar() {
               <div className="relative" ref={menuRef}>
                 <button
                   onClick={() => setMenuOpen(v => !v)}
+                  title="Account menu"
                   className="flex items-center gap-2 hover:bg-gray-50 p-1 rounded-md transition-colors"
                 >
                   <div className="w-7 h-7 rounded-full bg-gray-200 overflow-hidden relative border border-gray-300">
@@ -401,7 +411,7 @@ export function Navbar() {
             ) : (
               <Link
                 href="/auth/login"
-                className="text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 px-4 py-1.5 rounded-md transition-colors"
+                className="text-sm font-semibold text-white bg-blue-500 hover:bg-blue-600 px-4 py-1.5 rounded-lg transition-colors"
               >
                 Login
               </Link>
@@ -413,7 +423,7 @@ export function Navbar() {
     {showLogoutConfirm && (
       <LogoutConfirmModal
         onCancel={() => setShowLogoutConfirm(false)}
-        onConfirm={() => signOut({ callbackUrl: '/auth/login' })}
+        onConfirm={handleLogout}
       />
     )}
     </>

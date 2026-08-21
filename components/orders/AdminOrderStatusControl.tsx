@@ -4,21 +4,14 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Loader2 } from 'lucide-react'
 import { toast } from 'react-hot-toast'
+import { getAllowedNextStatuses, ORDER_STATUS_LABELS, ORDER_STATUS_SOFT_COLOR } from '@/lib/order-status'
 
 export type DBOrderStatus = 'PENDING' | 'PROCESSING' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED'
-
-const statusMap: Record<DBOrderStatus, { label: string; color: string }> = {
-  PENDING: { label: 'Pending', color: 'bg-gray-100 text-gray-700 border-gray-200' },
-  PROCESSING: { label: 'In Progress', color: 'bg-yellow-100 text-yellow-700 border-yellow-200' },
-  SHIPPED: { label: 'Dispatched', color: 'bg-blue-100 text-blue-700 border-blue-200' },
-  DELIVERED: { label: 'Delivered', color: 'bg-green-100 text-green-700 border-green-200' },
-  CANCELLED: { label: 'Cancelled', color: 'bg-red-100 text-red-700 border-red-200' },
-}
 
 export function AdminOrderStatusControl({ orderId, status }: { orderId: string; status: DBOrderStatus }) {
   const router = useRouter()
   const [isUpdating, setIsUpdating] = useState(false)
-  const statusInfo = statusMap[status]
+  const statusInfo = { label: ORDER_STATUS_LABELS[status], color: ORDER_STATUS_SOFT_COLOR[status] }
 
   if (status === 'DELIVERED') {
     return (
@@ -56,6 +49,8 @@ export function AdminOrderStatusControl({ orderId, status }: { orderId: string; 
     }
   }
 
+  const selectableStatuses = Array.from(new Set([status, ...getAllowedNextStatuses(status)]))
+
   return (
     <div className="flex items-center gap-2">
       {isUpdating ? (
@@ -65,13 +60,12 @@ export function AdminOrderStatusControl({ orderId, status }: { orderId: string; 
           value={status}
           onChange={(e) => handleChange(e.target.value)}
           disabled={isUpdating}
+          title="Change order status"
           className={`text-xs font-semibold px-3 py-1.5 rounded-full border outline-none cursor-pointer ${statusInfo.color}`}
         >
-          <option value="PENDING">Pending</option>
-          <option value="PROCESSING">In Progress</option>
-          <option value="SHIPPED">Dispatched</option>
-          <option value="DELIVERED">Delivered</option>
-          <option value="CANCELLED">Cancelled</option>
+          {selectableStatuses.map(s => (
+            <option key={s} value={s}>{ORDER_STATUS_LABELS[s]}</option>
+          ))}
         </select>
       )}
     </div>

@@ -370,6 +370,7 @@ export default function NewProductPage() {
                   <button
                     type="button"
                     onClick={() => removeImage(url)}
+                    title="Remove image"
                     className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
                   >
                     <X className="w-3 h-3" />
@@ -385,6 +386,7 @@ export default function NewProductPage() {
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
+                  title="Add image"
                   className="w-20 h-20 rounded-lg border-2 border-dashed border-gray-300 flex flex-col items-center justify-center gap-1 hover:border-blue-400 hover:bg-blue-50 transition-colors"
                 >
                   <ImageIcon className="w-5 h-5 text-gray-400" />

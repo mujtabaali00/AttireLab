@@ -3,10 +3,12 @@
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { Package, Pencil, Power, PowerOff, Search } from 'lucide-react'
+import { Package, Pencil, Power, Search, Loader2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'react-hot-toast'
 import { Category } from '@prisma/client'
+import { formatPrice } from '@/lib/format'
+import { TablePagination } from '@/components/ui/TablePagination'
 
 type ProductWithDetails = {
   id: string
@@ -80,7 +82,7 @@ export function ProductsClientTable({
 
   return (
     <>
-      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
         {/* Search bar and filters */}
         <div className="px-4 py-3 border-b border-gray-100 flex flex-col sm:flex-row gap-3 items-center justify-between">
           <div className="relative w-full sm:max-w-xs">
@@ -180,7 +182,7 @@ export function ProductsClientTable({
 
                       {/* Price */}
                       <td className="px-4 py-3 text-gray-700">
-                        Rs {Number(product.price).toLocaleString()}
+                        Rs {formatPrice(Number(product.price))}
                       </td>
 
                       {/* Category */}
@@ -216,7 +218,7 @@ export function ProductsClientTable({
                               className="p-1.5 text-red-500 hover:bg-red-50 rounded transition-colors"
                               title="Deactivate Product"
                             >
-                              <PowerOff className="w-4 h-4" />
+                              <Power className="w-4 h-4" />
                             </button>
                           ) : (
                             <button
@@ -237,37 +239,12 @@ export function ProductsClientTable({
           )}
         </div>
 
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-end px-4 py-3 border-t border-gray-100 gap-2">
-            <button
-              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-              disabled={currentPage === 1}
-              className="px-3 py-1 text-sm text-blue-500 border border-gray-200 rounded hover:bg-gray-50 disabled:opacity-40 transition-colors"
-            >
-              Previous
-            </button>
-            {Array.from({ length: totalPages }).map((_, i) => (
-              <button
-                key={i}
-                onClick={() => setCurrentPage(i + 1)}
-                className={`w-8 h-7 text-sm rounded border transition-colors ${currentPage === i + 1
-                    ? 'bg-blue-600 text-white border-blue-600'
-                    : 'text-gray-600 border-gray-200 hover:bg-gray-50'
-                  }`}
-              >
-                {i + 1}
-              </button>
-            ))}
-            <button
-              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-              disabled={currentPage === totalPages}
-              className="px-3 py-1 text-sm text-blue-500 border border-gray-200 rounded hover:bg-gray-50 disabled:opacity-40 transition-colors"
-            >
-              Next
-            </button>
-          </div>
-        )}
+        <TablePagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalCount={filteredProducts.length}
+          onPageChange={setCurrentPage}
+        />
       </div>
 
       {/* Activate/Deactivate confirmation modal */}
@@ -298,9 +275,9 @@ export function ProductsClientTable({
               <button
                 onClick={confirmToggleStatus}
                 disabled={isToggling}
-                className="px-6 py-2 bg-blue-500 text-white rounded-lg text-sm font-medium hover:bg-blue-600 disabled:opacity-50"
+                className="px-6 py-2 bg-blue-500 text-white rounded-lg text-sm font-medium hover:bg-blue-600 disabled:opacity-50 flex items-center justify-center min-w-[52px]"
               >
-                {isToggling ? 'Saving...' : 'Yes'}
+                {isToggling ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Yes'}
               </button>
             </div>
           </div>

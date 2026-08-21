@@ -359,6 +359,7 @@ export function EditProductForm({ productId, initialData }: EditProductFormProps
                   <button
                     type="button"
                     onClick={() => removeImage(url)}
+                    title="Remove image"
                     className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
                   >
                     <X className="w-3 h-3" />
@@ -597,7 +598,7 @@ export function EditProductForm({ productId, initialData }: EditProductFormProps
                   </div>
 
                   <div className="col-span-12 sm:col-span-1 flex justify-end sm:justify-center sm:pt-5">
-                    <button type="button" onClick={() => removeSpec(index)} className="text-red-400 hover:text-red-600 p-1 hover:bg-red-50 rounded transition-colors">
+                    <button type="button" onClick={() => removeSpec(index)} title="Remove variant" className="text-red-400 hover:text-red-600 p-1 hover:bg-red-50 rounded transition-colors">
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>

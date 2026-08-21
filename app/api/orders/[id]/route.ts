@@ -3,6 +3,7 @@ import { auth } from '@/auth'
 import { db } from '@/lib/db'
 import { apiSuccess, apiError } from '@/lib/api-response'
 import { OrderStatus, NotificationType } from '@prisma/client'
+import { isValidStatusTransition } from '@/lib/order-status'
 
 type RouteCtx = { params: Promise<{ id: string }> }
 
@@ -65,6 +66,10 @@ export async function PATCH(req: NextRequest, { params }: RouteCtx) {
 
     if (existing.status === 'DELIVERED') {
       return apiError('This order has already been delivered and its status can no longer be changed', 400)
+    }
+
+    if (!isValidStatusTransition(existing.status, status)) {
+      return apiError(`Order status cannot move from ${existing.status} back to ${status}`, 400)
     }
 
     // Restore stock if transitioning TO cancelled (and wasn't already cancelled)

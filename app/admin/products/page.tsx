@@ -1,6 +1,6 @@
 import { db } from '@/lib/db'
 import Link from 'next/link'
-import { ProductsClientTable } from '@/components/admin/ProductsClientTable'
+import { ProductsClientTable } from '@/components/admin/ProductsAdminTable'
 
 export const metadata = { title: 'Products' }
 export const dynamic = 'force-dynamic'
@@ -27,7 +27,7 @@ export default async function AdminProductsPage() {
     <div className="p-6 lg:p-8">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-        <h1 className="text-xl font-bold text-blue-600">Products</h1>
+        <h1 className="text-xl font-bold text-gray-900">Products</h1>
         <div className="flex items-center gap-3">
           <Link
             href="/admin/products/new"
@@ -37,7 +37,7 @@ export default async function AdminProductsPage() {
           </Link>
           <button
             disabled
-            className="inline-flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+            className="inline-flex items-center justify-center bg-blue-500 hover:bg-blue-600 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
             title="Coming soon"
           >
             + Add Multiple Products
