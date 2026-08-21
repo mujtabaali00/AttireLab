@@ -48,6 +48,7 @@ export function ProductList({ initialProducts, categories, initialHasMore }: Pro
   const [maxPage, setMaxPage] = useState(1)
   const [hasMore, setHasMore] = useState(initialHasMore)
   const [isLoadingMore, setIsLoadingMore] = useState(false)
+  const [isLoadingPrevious, setIsLoadingPrevious] = useState(false)
   const [search, setSearch] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('all')
   const [sortBy, setSortBy] = useState('newest')
@@ -132,16 +133,39 @@ export function ProductList({ initialProducts, categories, initialHasMore }: Pro
   }, [hasMore, maxPage, pageCache, isFiltering, captureScrollAnchor])
 
   // Bring back a previously-dropped batch when scrolling back up — always
-  // already cached, so this is instant with no network request.
+  // already cached, so this is instant with no network request. A brief
+  // loader is still shown (with an artificial minimum duration) so the
+  // reverse direction gives the same visual feedback as the forward one,
+  // instead of batches silently popping in with no indication anything happened.
+  const loadingPreviousRef = useRef(false)
+  const loadPreviousTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
   const loadPrevious = useCallback(() => {
-    if (minPage <= 1) return
+    if (minPage <= 1 || loadingPreviousRef.current) return
+    loadingPreviousRef.current = true
+    setIsLoadingPrevious(true)
     // The current first-rendered item is about to be pushed down by the
     // batch we're restoring above it — anchor on it before that happens.
     captureScrollAnchor(0)
     const target = minPage - 1
     setMaxPage(prevMax => Math.min(prevMax, target + WINDOW_BATCHES))
     setMinPage(target)
+
+    if (loadPreviousTimeoutRef.current) clearTimeout(loadPreviousTimeoutRef.current)
+    loadPreviousTimeoutRef.current = setTimeout(() => {
+      // Hiding the loader also shifts the grid up by its height — anchor
+      // again so that transition doesn't produce its own visible jump.
+      captureScrollAnchor(0)
+      setIsLoadingPrevious(false)
+      loadingPreviousRef.current = false
+    }, 400)
   }, [minPage, captureScrollAnchor])
+
+  useEffect(() => {
+    return () => {
+      if (loadPreviousTimeoutRef.current) clearTimeout(loadPreviousTimeoutRef.current)
+    }
+  }, [])
 
   useEffect(() => {
     const sentinel = bottomSentinelRef.current
@@ -244,6 +268,12 @@ export function ProductList({ initialProducts, categories, initialHasMore }: Pro
 
       {/* Top sentinel — scrolling back up past here re-mounts the previous (cached) batch */}
       <div ref={topSentinelRef} className="h-px" />
+
+      {isLoadingPrevious && (
+        <div className="flex items-center justify-center gap-2 py-6 text-sm text-gray-400">
+          <Loader2 className="w-4 h-4 animate-spin" /> Loading previous products...
+        </div>
+      )}
 
       {/* Products Grid — 4 columns on desktop so each batch of 8 fills two rows */}
       {filtered.length === 0 ? (
