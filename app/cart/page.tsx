@@ -255,7 +255,7 @@ function CartPageContent() {
       <div>
         {/* Title & Timer */}
       <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <Link href="/" className="inline-flex items-center text-blue-500 hover:text-blue-600 font-medium text-[28px] tracking-tight transition-colors">
+          <Link href="/" className="inline-flex items-center text-blue-500 hover:text-blue-600 font-medium text-2xl tracking-tight transition-colors">
             <span className="mr-3 font-normal">&larr;</span> Shopping Bag
           </Link>
           
@@ -516,7 +516,7 @@ function CartPageContent() {
       {/* Shipping Address Modal */}
       {showAddressModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl p-5 w-full max-w-sm shadow-xl">
+          <div className="bg-white rounded-xl p-6 w-full max-w-sm shadow-xl">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-base font-semibold text-gray-900">Shipping Address</h3>
               <button onClick={() => setShowAddressModal(false)} title="Close" className="text-gray-400 hover:text-gray-600">

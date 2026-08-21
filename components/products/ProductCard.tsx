@@ -299,7 +299,7 @@ export function ProductCard({ product }: { product: SerializedProduct }) {
           <button
             onClick={handleAdd}
             disabled={isTotalOutOfStock || isSelectionOutOfStock || (hasSpecs && !matchingSpec)}
-            className="flex-1 h-7 text-white text-xs font-semibold rounded transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed bg-blue-600 hover:bg-blue-700 active:bg-blue-800"
+            className="flex-1 h-7 text-white text-xs font-semibold rounded transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed bg-blue-500 hover:bg-blue-600 active:bg-blue-700"
           >
             Add to Cart
           </button>

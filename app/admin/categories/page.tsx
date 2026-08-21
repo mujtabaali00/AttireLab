@@ -18,6 +18,7 @@ export default function AdminCategoriesPage() {
   const [isCreating, setIsCreating] = useState(false)
   const [createError, setCreateError] = useState('')
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null)
 
   const fetchCategories = async () => {
     const res = await fetch('/api/categories')
@@ -55,8 +56,9 @@ export default function AdminCategoriesPage() {
     }
   }
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Delete this category? Products in this category will be unassigned.')) return
+  const handleDeleteConfirm = async () => {
+    if (!categoryToDelete) return
+    const id = categoryToDelete.id
     setDeletingId(id)
     try {
       const res = await fetch(`/api/categories/${id}`, { method: 'DELETE' })
@@ -70,6 +72,7 @@ export default function AdminCategoriesPage() {
       toast.error('Network error')
     } finally {
       setDeletingId(null)
+      setCategoryToDelete(null)
     }
   }
 
@@ -132,7 +135,7 @@ export default function AdminCategoriesPage() {
                   </div>
                 </div>
                 <button
-                  onClick={() => handleDelete(cat.id)}
+                  onClick={() => setCategoryToDelete(cat)}
                   disabled={deletingId === cat.id}
                   title="Delete category"
                   className="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
@@ -148,6 +151,39 @@ export default function AdminCategoriesPage() {
           </ul>
         )}
       </div>
+
+      {/* Delete confirmation modal */}
+      {categoryToDelete && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl p-6 w-full max-w-xs text-center shadow-xl">
+            <h3 className="text-lg font-semibold text-blue-500 mb-1">Delete Category</h3>
+            <div className="flex justify-center my-4">
+              <svg className="w-14 h-14 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            </div>
+            <p className="text-sm font-medium text-gray-800 mb-5">
+              Delete <strong>{categoryToDelete.name}</strong>? Products in this category will be unassigned.
+            </p>
+            <div className="flex justify-center gap-4">
+              <button
+                onClick={() => setCategoryToDelete(null)}
+                disabled={deletingId !== null}
+                className="px-6 py-2 border border-blue-500 text-blue-500 rounded-lg text-sm font-medium hover:bg-blue-50 disabled:opacity-50"
+              >
+                No
+              </button>
+              <button
+                onClick={handleDeleteConfirm}
+                disabled={deletingId !== null}
+                className="px-6 py-2 bg-blue-500 text-white rounded-lg text-sm font-medium hover:bg-blue-600 disabled:opacity-50 flex items-center justify-center min-w-[52px]"
+              >
+                {deletingId !== null ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Yes'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

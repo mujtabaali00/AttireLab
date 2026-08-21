@@ -27,7 +27,7 @@ export default async function Home() {
   const products = rawProducts.map(serializeProduct)
 
   return (
-    <div className="min-h-[calc(100vh-72px)] bg-slate-50 py-10">
+    <div className="min-h-[calc(100vh-72px)] py-10">
       <div className="mx-auto w-full max-w-[1440px] px-4 sm:px-6 lg:px-8">
         <ProductList
           initialProducts={products}

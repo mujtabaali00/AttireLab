@@ -72,7 +72,7 @@ export default async function AdminOrdersPage() {
       </div>
 
       <div className="mb-4">
-        <h2 className="text-xl font-bold text-gray-900">Orders</h2>
+        <h1 className="text-xl font-bold text-gray-900">Orders</h1>
       </div>
 
       <OrdersTable orders={orderRows} isAdmin={true} />

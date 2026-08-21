@@ -411,7 +411,7 @@ export function Navbar() {
             ) : (
               <Link
                 href="/auth/login"
-                className="text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 px-4 py-1.5 rounded-md transition-colors"
+                className="text-sm font-semibold text-white bg-blue-500 hover:bg-blue-600 px-4 py-1.5 rounded-lg transition-colors"
               >
                 Login
               </Link>
