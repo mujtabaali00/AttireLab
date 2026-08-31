@@ -3,6 +3,7 @@ import Image from 'next/image'
 import { ArrowLeft, Package } from 'lucide-react'
 import { OrderStatus, Prisma } from '@prisma/client'
 import { AdminOrderStatusControl } from './AdminOrderStatusControl'
+import { ReorderButton } from './ReorderButton'
 import { formatPrice } from '@/lib/format'
 import { ORDER_STATUS_LABELS, ORDER_STATUS_SOLID_COLOR } from '@/lib/order-status'
 
@@ -185,7 +186,7 @@ export function OrderDetailView({ order, variant }: { order: OrderDetailData; va
                 {(['PENDING', 'PROCESSING', 'SHIPPED', 'DELIVERED'] as OrderStatus[]).map((s) => {
                   const currentIdx = STATUS_ORDER.indexOf(order.status)
                   const thisIdx = STATUS_ORDER.indexOf(s)
-                  const isActive = order.status === 'CANCELLED' ? false : thisIdx <= currentIdx
+                  const isActive = order.status === 'CANCELLED' || order.status === 'PAYMENT_FAILED' ? false : thisIdx <= currentIdx
                   const isCurrent = order.status === s
 
                   return (
@@ -200,6 +201,15 @@ export function OrderDetailView({ order, variant }: { order: OrderDetailData; va
                     <div className="w-2 h-2 rounded-full shrink-0 bg-red-500" />
                     <span className="font-semibold">{ORDER_STATUS_LABELS.CANCELLED}</span>
                   </div>
+                )}
+                {order.status === 'PAYMENT_FAILED' && (
+                  <div className="flex items-center gap-2 text-xs text-red-600">
+                    <div className="w-2 h-2 rounded-full shrink-0 bg-red-600" />
+                    <span className="font-semibold">{ORDER_STATUS_LABELS.PAYMENT_FAILED}</span>
+                  </div>
+                )}
+                {!isAdmin && order.status === 'PAYMENT_FAILED' && (
+                  <ReorderButton orderId={order.id} />
                 )}
               </div>
             )}

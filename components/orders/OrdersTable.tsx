@@ -9,7 +9,7 @@ import { getAllowedNextStatuses, ORDER_STATUS_LABELS, ORDER_STATUS_SOLID_COLOR }
 import { formatPrice } from '@/lib/format'
 import { TablePagination } from '@/components/ui/TablePagination'
 
-export type DBOrderStatus = 'PENDING' | 'PROCESSING' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED'
+export type DBOrderStatus = 'PENDING' | 'PROCESSING' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED' | 'PAYMENT_FAILED'
 
 export interface OrderRow {
   id: string

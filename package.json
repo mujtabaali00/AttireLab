@@ -6,14 +6,20 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.3",
     "@hookform/resolvers": "^5.5.7",
     "@prisma/client": "^6.19.3",
+    "@stripe/react-stripe-js": "^6.8.2",
+    "@stripe/stripe-js": "^9.14.0",
     "bcryptjs": "^3.0.3",
     "date-fns": "^4.4.0",
+    "jest": "^30.4.2",
     "lucide-react": "^1.28.0",
     "next": "16.2.12",
     "next-auth": "^5.0.0-beta.32",
@@ -26,6 +32,7 @@
     "react-dom": "19.2.4",
     "react-hook-form": "^7.83.0",
     "react-hot-toast": "^2.6.0",
+    "stripe": "^22.6.0",
     "uuid": "^14.0.1",
     "zod": "^4.4.3",
     "zustand": "^5.0.14"
@@ -33,6 +40,7 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/bcryptjs": "^2.4.6",
+    "@types/jest": "^30.0.0",
     "@types/node": "^20",
     "@types/nodemailer": "^8.0.1",
     "@types/papaparse": "^5.5.2",
@@ -42,6 +50,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.12",
     "tailwindcss": "^4",
+    "ts-jest": "^29.4.12",
     "ts-node": "^10.9.2",
     "typescript": "^5"
   },

@@ -1,6 +1,7 @@
 
 import bcrypt from 'bcryptjs'
 import { db } from '@/lib/db'
+import { stripe } from '@/lib/stripe'
 import { registerSchema } from '@/lib/validations/auth.schema'
 import { apiSuccess, apiError } from '@/lib/api-response'
 import { logger } from '@/lib/logger'
@@ -26,12 +27,26 @@ export async function POST(req: Request) {
 
     const passwordHash = await bcrypt.hash(password, 12)
 
+    let stripeCustomerId: string | null = null
+    if (stripe) {
+      try {
+        const customer = await stripe.customers.create({
+          email,
+          name,
+        })
+        stripeCustomerId = customer.id
+      } catch (err) {
+        logger.error({ err }, 'Failed to create Stripe customer during registration')
+      }
+    }
+
     await db.user.create({
       data: {
         name,
         email,
         passwordHash,
-        role: 'CUSTOMER'
+        role: 'CUSTOMER',
+        stripeCustomerId
       }
     })
 

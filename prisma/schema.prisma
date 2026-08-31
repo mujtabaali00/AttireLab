@@ -23,6 +23,7 @@ enum OrderStatus {
   SHIPPED
   DELIVERED
   CANCELLED
+  PAYMENT_FAILED
 }
 
 enum NotificationType {
@@ -41,6 +42,7 @@ model User {
   image         String?
   passwordHash  String?
   role          Role                 @default(CUSTOMER)
+  stripeCustomerId String?
   createdAt     DateTime             @default(now())
   updatedAt     DateTime             @updatedAt
   accounts      Account[]
@@ -109,6 +111,10 @@ model Order {
   tax             Decimal     @db.Decimal(10, 2)
   total           Decimal     @db.Decimal(10, 2)
   shippingAddress Json
+  stripeSessionId String?     @unique
+  paymentMethod   String?
+  paymentStatus   String?
+  stripePaymentIntentId String? @unique
   items           OrderItem[]
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
