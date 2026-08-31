@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server'
 import { auth } from '@/auth'
 import { apiSuccess, apiError } from '@/lib/api-response'
-import { saveImageLocally, deleteLocalImage } from '@/lib/local-upload'
+import { uploadImageToBlob, deleteBlobImage } from '@/lib/vercel-blob-upload'
 
 // POST /api/upload — ADMIN only, multipart/form-data
 export async function POST(req: NextRequest) {
@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
       }
 
       const buffer = Buffer.from(await file.arrayBuffer())
-      const url = await saveImageLocally(buffer, file.type)
+      const url = await uploadImageToBlob(buffer, file.type)
       urls.push(url)
     }
 
@@ -60,7 +60,7 @@ export async function DELETE(req: NextRequest) {
       return apiError('URL is required', 400)
     }
 
-    await deleteLocalImage(url)
+    await deleteBlobImage(url)
     return apiSuccess({ deleted: true })
   } catch {
     return apiError('Failed to delete image', 500)

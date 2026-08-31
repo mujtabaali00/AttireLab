@@ -11,6 +11,10 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: 'lh3.googleusercontent.com', // Google OAuth profile pictures
       },
+      {
+        protocol: 'https',
+        hostname: '*.public.blob.vercel-storage.com', // Vercel Blob CDN
+      },
     ],
   },
 };
