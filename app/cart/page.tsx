@@ -4,12 +4,16 @@ import { Suspense, useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
-import { Trash2, Plus, Minus, X, ShoppingBag, CheckCircle, Loader2 } from 'lucide-react'
+import { Trash2, Plus, Minus, X, ShoppingBag, CheckCircle, Loader2, Trash } from 'lucide-react'
 import { useCartStore } from '@/lib/store/cart.store'
 import { useSession } from 'next-auth/react'
 import { toast } from 'react-hot-toast'
 import { PageSpinner } from '@/components/ui/PageSpinner'
 import { formatPrice } from '@/lib/format'
+import { loadStripe } from '@stripe/stripe-js'
+import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js'
+
+const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || '')
 
 export default function CartPage() {
   return (
@@ -170,43 +174,8 @@ function CartPageContent() {
       router.push(`/auth/login?callbackUrl=${encodeURIComponent('/cart?checkout=1')}`)
       return
     }
-    // Logged in — open address modal directly
+    // Logged in — open checkout modal
     setShowAddressModal(true)
-  }
-
-  const handlePlaceOrder = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsPlacingOrder(true)
-    try {
-      const res = await fetch('/api/orders', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          items: items.map(i => ({ productId: i.productId, specificationId: i.specificationId, quantity: i.quantity })),
-          shippingAddress: { address },
-        }),
-      })
-      if (!res.ok) {
-        const data = await res.json()
-        throw new Error(data.error || 'Failed to place order')
-      }
-      
-      const newAddresses = [address, ...recentAddresses.filter(a => a !== address)].slice(0, 3)
-      setRecentAddresses(newAddresses)
-      localStorage.setItem('attirelab_recent_addresses', JSON.stringify(newAddresses))
-
-      clearCart()
-      setShowAddressModal(false)
-      const data = await res.json()
-      const orderId = data.data?.id
-
-      setPlacedOrderId(orderId || null)
-    } catch (error: unknown) {
-      const msg = error instanceof Error ? error.message : 'An error occurred'
-      toast.error(msg)
-    } finally {
-      setIsPlacingOrder(false)
-    }
   }
 
   if (placedOrderId) {
@@ -513,67 +482,339 @@ function CartPageContent() {
         </div>
       )}
 
-      {/* Shipping Address Modal */}
-      {showAddressModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl p-6 w-full max-w-sm shadow-xl">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-base font-semibold text-gray-900">Shipping Address</h3>
-              <button onClick={() => setShowAddressModal(false)} title="Close" className="text-gray-400 hover:text-gray-600">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <form onSubmit={handlePlaceOrder}>
+      {/* Shipping Address & Stripe Checkout Modal */}
+      <StripeCheckoutModal
+        isOpen={showAddressModal}
+        onClose={() => setShowAddressModal(false)}
+        subtotal={subtotal}
+        tax={tax}
+        total={total}
+        address={address}
+        setAddress={setAddress}
+        recentAddresses={recentAddresses}
+        setRecentAddresses={setRecentAddresses}
+        items={items}
+        clearCart={clearCart}
+      />
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────
+// Stripe Checkout Modal
+// ─────────────────────────────────────────────────────────────
+interface StripeCheckoutModalProps {
+  isOpen: boolean
+  onClose: () => void
+  subtotal: number
+  tax: number
+  total: number
+  address: string
+  setAddress: (v: string) => void
+  recentAddresses: string[]
+  setRecentAddresses: (v: string[]) => void
+  items: any[]
+  clearCart: () => void
+}
+
+function StripeCheckoutModal(props: StripeCheckoutModalProps) {
+  if (!props.isOpen) return null
+  return (
+    <Elements stripe={stripePromise}>
+      <CheckoutForm {...props} />
+    </Elements>
+  )
+}
+
+interface SavedCard {
+  id: string
+  brand: string | undefined
+  last4: string | undefined
+  expMonth: number | undefined
+  expYear: number | undefined
+}
+
+function CheckoutForm({
+  isOpen, onClose, subtotal, tax, total,
+  address, setAddress, recentAddresses, setRecentAddresses,
+  items, clearCart,
+}: StripeCheckoutModalProps) {
+  const stripe = useStripe()
+  const elements = useElements()
+  const router = useRouter()
+
+  const [step, setStep] = useState<'address' | 'payment'>('address')
+  const [paymentMethodType, setPaymentMethodType] = useState<'CARD' | 'COD'>('CARD')
+  const [savedCards, setSavedCards] = useState<SavedCard[]>([])
+  const [selectedCardId, setSelectedCardId] = useState<string | null>(null)
+  const [useNewCard, setUseNewCard] = useState(false)
+  const [saveCard, setSaveCard] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const [isFetchingCards, setIsFetchingCards] = useState(false)
+  const [paymentError, setPaymentError] = useState<string | null>(null)
+  const [deletingCardId, setDeletingCardId] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (isOpen && step === 'payment' && paymentMethodType === 'CARD') {
+      setIsFetchingCards(true)
+      fetch('/api/payment-methods')
+        .then(r => r.json())
+        .then(d => {
+          const cards: SavedCard[] = d.data || []
+          setSavedCards(cards)
+          if (cards.length > 0) {
+            setSelectedCardId(cards[0].id)
+            setUseNewCard(false)
+          } else {
+            setUseNewCard(true)
+          }
+        })
+        .catch(() => setUseNewCard(true))
+        .finally(() => setIsFetchingCards(false))
+    }
+  }, [isOpen, step, paymentMethodType])
+
+  const handleDeleteCard = async (cardId: string) => {
+    setDeletingCardId(cardId)
+    try {
+      const res = await fetch(`/api/payment-methods/${cardId}`, { method: 'DELETE' })
+      if (!res.ok) throw new Error('Failed to remove card')
+      setSavedCards(prev => prev.filter(c => c.id !== cardId))
+      if (selectedCardId === cardId) {
+        const remaining = savedCards.filter(c => c.id !== cardId)
+        if (remaining.length > 0) setSelectedCardId(remaining[0].id)
+        else { setSelectedCardId(null); setUseNewCard(true) }
+      }
+      toast.success('Card removed')
+    } catch {
+      toast.error('Failed to remove card')
+    } finally {
+      setDeletingCardId(null)
+    }
+  }
+
+  const handlePlaceOrder = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!stripe || !elements) return
+    setIsLoading(true)
+    setPaymentError(null)
+
+    try {
+      let paymentMethodId: string | undefined
+
+      if (paymentMethodType === 'CARD') {
+        if (useNewCard) {
+          const cardEl = elements.getElement(CardElement)
+          if (!cardEl) throw new Error('Card element not found')
+          const { error, paymentMethod } = await stripe.createPaymentMethod({ type: 'card', card: cardEl })
+          if (error) { setPaymentError(error.message || 'Card error'); setIsLoading(false); return }
+          paymentMethodId = paymentMethod?.id
+        } else {
+          if (!selectedCardId) { setPaymentError('Please select a card'); setIsLoading(false); return }
+          paymentMethodId = selectedCardId
+        }
+      }
+
+      // Save address to recent list
+      const newAddresses = [address, ...recentAddresses.filter(a => a !== address)].slice(0, 3)
+      setRecentAddresses(newAddresses)
+      localStorage.setItem('attirelab_recent_addresses', JSON.stringify(newAddresses))
+
+      const res = await fetch('/api/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          items: items.map(i => ({ productId: i.productId, specificationId: i.specificationId, quantity: i.quantity })),
+          shippingAddress: { address },
+          paymentMethodType,
+          paymentMethodId,
+          saveCard,
+        })
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        // Card declined — redirect to failed page
+        if (data.orderId) {
+          router.push(`/checkout/failed?reason=${encodeURIComponent(data.error || 'Payment failed')}&order_id=${data.orderId}`)
+        } else {
+          setPaymentError(data.error || 'Payment failed')
+        }
+        return
+      }
+
+      // 3D Secure required
+      if (data.data?.requiresAction && data.data?.clientSecret) {
+        const { error: confirmError } = await stripe.confirmCardPayment(data.data.clientSecret)
+        if (confirmError) {
+          setPaymentError(confirmError.message || 'Payment authentication failed')
+          return
+        }
+        clearCart()
+        router.push('/checkout/success')
+        return
+      }
+
+      // Success
+      clearCart()
+      onClose()
+      router.push('/checkout/success')
+    } catch (err: any) {
+      setPaymentError(err.message || 'An unexpected error occurred')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  if (!isOpen) return null
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl max-h-[90vh] overflow-y-auto">
+        {/* Header */}
+        <div className="flex items-center justify-between p-5 border-b border-gray-100">
+          <div>
+            <h3 className="text-base font-bold text-gray-900">
+              {step === 'address' ? 'Shipping Address' : 'Payment Method'}
+            </h3>
+            <p className="text-xs text-gray-400 mt-0.5">
+              Step {step === 'address' ? '1' : '2'} of 2
+            </p>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <form onSubmit={step === 'address' ? (e) => { e.preventDefault(); setStep('payment') } : handlePlaceOrder} className="p-5 space-y-4">
+
+          {/* ── Step 1: Address ── */}
+          {step === 'address' && (
+            <>
               <textarea
                 required
                 value={address}
                 onChange={e => setAddress(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none resize-none"
+                className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none resize-none"
                 rows={4}
-                placeholder="Enter your full shipping address&#10;e.g. 123 Main St, Karachi, Pakistan"
+                placeholder={"Enter your full shipping address\ne.g. 123 Main St, Karachi, Pakistan"}
                 autoFocus
               />
-              
               {recentAddresses.length > 0 && (
-                <div className="mt-3">
-                  <p className="text-xs font-semibold text-gray-500 mb-2">Recent Addresses:</p>
-                  <div className="space-y-2">
+                <div>
+                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Recent</p>
+                  <div className="space-y-1.5">
                     {recentAddresses.map((addr, i) => (
-                      <button
-                        key={i}
-                        type="button"
-                        onClick={() => setAddress(addr)}
-                        className="w-full text-left text-xs bg-gray-50 hover:bg-blue-50 border border-gray-200 hover:border-blue-200 rounded-md p-2 transition-colors truncate"
-                        title={addr}
-                      >
+                      <button key={i} type="button" onClick={() => setAddress(addr)}
+                        className="w-full text-left text-xs bg-gray-50 hover:bg-blue-50 border border-gray-200 hover:border-blue-300 rounded-lg p-2.5 transition-colors truncate">
                         {addr}
                       </button>
                     ))}
                   </div>
                 </div>
               )}
+            </>
+          )}
 
-              <div className="flex justify-end gap-3 mt-4">
-                <button
-                  type="button"
-                  onClick={() => setShowAddressModal(false)}
-                  disabled={isPlacingOrder}
-                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isPlacingOrder}
-                  className="px-4 py-2 bg-blue-500 text-white rounded-lg text-sm font-semibold hover:bg-blue-600 disabled:opacity-50 flex items-center justify-center gap-2 min-w-[120px]"
-                >
-                  {isPlacingOrder ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Confirm Order'}
-                </button>
+          {/* ── Step 2: Payment ── */}
+          {step === 'payment' && (
+            <>
+              {/* Order total summary */}
+              <div className="bg-gray-50 rounded-xl p-3 text-sm space-y-1">
+                <div className="flex justify-between text-gray-500"><span>Subtotal</span><span>Rs {subtotal.toFixed(2)}</span></div>
+                <div className="flex justify-between text-gray-500"><span>Tax (10%)</span><span>Rs {tax.toFixed(2)}</span></div>
+                <div className="flex justify-between font-bold text-gray-900 pt-1 border-t border-gray-200"><span>Total</span><span>Rs {total.toFixed(2)}</span></div>
               </div>
-            </form>
+
+              {/* Payment type toggle */}
+              <div className="grid grid-cols-2 gap-2">
+                {(['CARD', 'COD'] as const).map(type => (
+                  <button key={type} type="button" onClick={() => setPaymentMethodType(type)}
+                    className={`py-2.5 rounded-xl text-sm font-medium border transition-colors ${paymentMethodType === type ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-200 text-gray-600 hover:border-gray-300'}`}>
+                    {type === 'CARD' ? '💳 Card' : '💵 Cash on Delivery'}
+                  </button>
+                ))}
+              </div>
+
+              {/* Card section */}
+              {paymentMethodType === 'CARD' && (
+                <div className="space-y-3">
+                  {isFetchingCards ? (
+                    <div className="flex justify-center py-4"><Loader2 className="w-5 h-5 animate-spin text-blue-500" /></div>
+                  ) : (
+                    <>
+                      {/* Saved cards */}
+                      {savedCards.length > 0 && (
+                        <div className="space-y-2">
+                          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Saved Cards</p>
+                          {savedCards.map(card => (
+                            <div key={card.id}
+                              onClick={() => { setSelectedCardId(card.id); setUseNewCard(false) }}
+                              className={`flex items-center justify-between p-3 border rounded-xl cursor-pointer transition-colors ${selectedCardId === card.id && !useNewCard ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'}`}>
+                              <div className="flex items-center gap-3">
+                                <input type="radio" readOnly checked={selectedCardId === card.id && !useNewCard} className="accent-blue-500" />
+                                <div>
+                                  <p className="text-sm font-medium text-gray-900 capitalize">{card.brand} •••• {card.last4}</p>
+                                  <p className="text-xs text-gray-400">Expires {card.expMonth}/{card.expYear}</p>
+                                </div>
+                              </div>
+                              <button type="button" onClick={(e) => { e.stopPropagation(); handleDeleteCard(card.id) }}
+                                disabled={deletingCardId === card.id}
+                                className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50">
+                                {deletingCardId === card.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash className="w-3.5 h-3.5" />}
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* New card toggle */}
+                      <button type="button" onClick={() => { setUseNewCard(true); setSelectedCardId(null) }}
+                        className={`w-full flex items-center gap-3 p-3 border rounded-xl text-sm font-medium transition-colors ${useNewCard ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-dashed border-gray-300 text-gray-500 hover:border-gray-400'}`}>
+                        <input type="radio" readOnly checked={useNewCard} className="accent-blue-500" />
+                        + Add New Card
+                      </button>
+
+                      {/* Stripe CardElement */}
+                      {useNewCard && (
+                        <div className="space-y-2">
+                          <div className="border border-gray-200 rounded-xl p-3">
+                            <CardElement options={{ style: { base: { fontSize: '14px', color: '#111827', '::placeholder': { color: '#9ca3af' } } } }} />
+                          </div>
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" checked={saveCard} onChange={e => setSaveCard(e.target.checked)} className="accent-blue-500 w-4 h-4" />
+                            <span className="text-xs text-gray-500">Save card for future purchases</span>
+                          </label>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
+
+              {paymentError && (
+                <div className="bg-red-50 border border-red-100 text-red-600 text-xs rounded-xl p-3">
+                  {paymentError}
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Footer buttons */}
+          <div className="flex gap-3 pt-2">
+            <button type="button"
+              onClick={step === 'address' ? onClose : () => setStep('address')}
+              className="flex-1 py-2.5 border border-gray-200 text-gray-700 rounded-xl text-sm font-medium hover:bg-gray-50 transition-colors">
+              {step === 'address' ? 'Cancel' : 'Back'}
+            </button>
+            <button type="submit" disabled={isLoading || !stripe}
+              className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-semibold disabled:opacity-50 flex items-center justify-center gap-2 transition-colors">
+              {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : step === 'address' ? 'Continue →' : paymentMethodType === 'CARD' ? 'Pay Now' : 'Place Order'}
+            </button>
           </div>
-        </div>
-      )}
+        </form>
+      </div>
     </div>
   )
 }

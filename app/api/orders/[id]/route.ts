@@ -64,6 +64,11 @@ export async function PATCH(req: NextRequest, { params }: RouteCtx) {
 
     if (!existing) return apiError('Order not found', 404)
 
+    // Enforce check: card orders cannot change status unless paid
+    if (existing.paymentMethod === 'CARD' && existing.paymentStatus !== 'PAID') {
+      return apiError('Cannot change order status: card payment is not successfully completed yet', 400)
+    }
+
     if (existing.status === 'DELIVERED') {
       return apiError('This order has already been delivered and its status can no longer be changed', 400)
     }

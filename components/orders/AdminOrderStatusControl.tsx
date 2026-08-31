@@ -6,7 +6,7 @@ import { Loader2 } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import { getAllowedNextStatuses, ORDER_STATUS_LABELS, ORDER_STATUS_SOFT_COLOR } from '@/lib/order-status'
 
-export type DBOrderStatus = 'PENDING' | 'PROCESSING' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED'
+export type DBOrderStatus = 'PENDING' | 'PROCESSING' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED' | 'PAYMENT_FAILED'
 
 export function AdminOrderStatusControl({ orderId, status }: { orderId: string; status: DBOrderStatus }) {
   const router = useRouter()

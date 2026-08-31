@@ -10,6 +10,7 @@ export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
   SHIPPED: 'Dispatched',
   DELIVERED: 'Delivered',
   CANCELLED: 'Rejected',
+  PAYMENT_FAILED: 'Payment Failed',
 }
 
 // Solid, high-contrast badge — used in list tables and the customer detail header.
@@ -19,6 +20,7 @@ export const ORDER_STATUS_SOLID_COLOR: Record<OrderStatus, string> = {
   SHIPPED: 'bg-blue-500 text-white',
   DELIVERED: 'bg-green-500 text-white',
   CANCELLED: 'bg-red-500 text-white',
+  PAYMENT_FAILED: 'bg-red-600 text-white',
 }
 
 // Soft, bordered badge — used for the editable admin status control.
@@ -28,17 +30,18 @@ export const ORDER_STATUS_SOFT_COLOR: Record<OrderStatus, string> = {
   SHIPPED: 'bg-blue-100 text-blue-700 border-blue-200',
   DELIVERED: 'bg-green-100 text-green-700 border-green-200',
   CANCELLED: 'bg-red-100 text-red-700 border-red-200',
+  PAYMENT_FAILED: 'bg-red-100 text-red-700 border-red-200',
 }
 
-// Linear progression an order moves through; CANCELLED is a separate
-// terminal state reachable from anywhere except DELIVERED/CANCELLED itself.
+// Linear progression an order moves through; CANCELLED/PAYMENT_FAILED are separate
+// terminal states.
 const FORWARD_STATUSES: OrderStatus[] = ['PENDING', 'PROCESSING', 'SHIPPED', 'DELIVERED']
 
 // Statuses an order currently at `current` is allowed to move to next.
 // Once advanced past a stage it can never go back to an earlier one, and
-// DELIVERED/CANCELLED orders are locked entirely.
+// DELIVERED/CANCELLED/PAYMENT_FAILED orders are locked entirely.
 export function getAllowedNextStatuses(current: OrderStatus): OrderStatus[] {
-  if (current === 'DELIVERED' || current === 'CANCELLED') return []
+  if (current === 'DELIVERED' || current === 'CANCELLED' || current === 'PAYMENT_FAILED') return []
   const currentRank = FORWARD_STATUSES.indexOf(current)
   const forward = FORWARD_STATUSES.filter(s => FORWARD_STATUSES.indexOf(s) >= currentRank)
   return [...forward, 'CANCELLED']
